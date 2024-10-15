@@ -4,6 +4,9 @@ Create a basic set of tools to retrieve paper information
 - [IEEE Xplore API](https://developer.ieee.org/)
 - [IEEE Xplore API develop registration](https://developer.ieee.org/apps/register)
 
+### Elsevier API to explore the journal
+- [Elsevier API](https://dev.elsevier.com/)
+
 ### Timeline
 
 - 2024-10-01: Project started
