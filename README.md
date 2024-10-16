@@ -1,5 +1,34 @@
 # Reproducibility in Transportation - Measurement tools development
-Create a basic set of tools to retrieve paper information
+Create a basic set of tools to retrieve paper information.
+
+## How to use this repo
+
+### Create the virtual environment
+To create the virtual environment from the `environment.yml` file, run the following commands:
+
+```sh
+conda env create -f environment.yml
+conda activate RR-measure
+```
+
+### About the Elsevier API usage
+
+#### Get your API key
+[Elsevier API](https://dev.elsevier.com/)
+
+#### Safely use your API key
+
+Put the API key in a file named `config.yaml` in the parent directory `../config.yaml` of this GitHub repo. The content of the file should be like this:
+    
+```yaml
+elsevier_api:
+    api_key: your_api_key_here
+```
+
+
+
+----------------
+## Background information for the project
 
 ### IEEE Xplore API to explore the journal
 - [IEEE Xplore API](https://developer.ieee.org/)
@@ -17,6 +46,7 @@ Create a basic set of tools to retrieve paper information
 
 - [Try to Start It! The Challenge of Reusing Code in Robotics Research](https://ieeexplore.ieee.org/document/8514000)
 - [Get in Researchers; We're Measuring Reproducibility": A Reproducibility Study of Machine Learning Papers in Tier 1 Security Conferences.](https://dl.acm.org/doi/10.1145/3576915.3623130)
+
 
 ### Acknowledgement
 
