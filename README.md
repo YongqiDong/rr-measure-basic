@@ -57,5 +57,5 @@ It's a project developed under the instruction of materials from [Wu et al. (202
 
 ### Team
 - [Junyi Ji](https://www.jijunyi.com)
-- Ruth Lu
+- [Ruth Lu](https://github.com/erasedbird)
 - [Cathy Wu](https://www.wucathy.com)
