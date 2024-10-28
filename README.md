@@ -1,5 +1,6 @@
 # Reproducibility in Transportation - Measurement tools development
-Create a basic set of tools to retrieve paper information.
+
+Create a basic set of tools to retrieve paper information and measure its reproducibility.
 
 ## How to use this repo
 
