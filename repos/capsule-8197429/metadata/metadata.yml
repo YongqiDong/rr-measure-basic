@@ -1,0 +1,17 @@
+metadata_version: 1
+name: Low-Latency Live Video Streaming over a Low-Earth-Orbit Satellite Network with
+  DASH
+description: This Code Ocean Capsule is associated with https://github.com/clarkzjw/mmsys24-starlink-livestreaming,
+  which is part of the artifacts of the paper "Low-Latency Live Video Streaming over
+  a Low-Earth-Orbit Satellite Network with DASH" accepted by ACM MMSys'24.
+tags:
+- starlink
+- low-latency
+- Live video streaming
+authors:
+- name: Jinwei Zhao
+  affiliations:
+  - name: University of Victoria
+- name: Jianping Pan
+  affiliations:
+  - name: University of Victoria

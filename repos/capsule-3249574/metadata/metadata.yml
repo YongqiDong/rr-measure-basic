@@ -1,0 +1,13 @@
+metadata_version: 1
+name: 'SybilFlyover: Heterogeneous Graph-Based Fake Account Detection Model on Social
+  Networks'
+description: |-
+  SybilFlyover,  a heterogeneous graph-based model for detecting Sybil accounts on Online Social Networks(OSNs). The dataset used in this study could be found in http://mib.projects.iit.cnr.it/dataset.html . Considering the computing  capacity needed of this model, we recommend 20GB or above graphic memory of  your device.
+  Notes: Due to the usage terms of this dataset, we only updated and used a very small portion of the dataset in this capsule to just ensure that the model works properly. Please use a larger dataset to obtain the normal performance of the model.
+authors:
+- name: Siyu Li
+  affiliations:
+  - name: Sichuan University
+corresponding_contributor:
+  name: Jin Yang
+  email: jinyangscu@163.com

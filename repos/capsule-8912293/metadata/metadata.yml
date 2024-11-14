@@ -1,0 +1,19 @@
+metadata_version: 1
+name: 'Making a Difference: The Consequences of Electoral Experiments'
+description: While experiments on elections represent a popular tool in social science,
+  the possibility that experimental interventions could affect who wins office remains
+  a central ethical concern. I formally characterize electoral experimental designs
+  to derive an upper bound on aggregate electoral impact under different assumptions
+  about interference. I then introduce a decision rule based on comparison of this
+  bound to predicted election outcomes to determine whether an experiment should be
+  implemented. Researchers can mitigate the possibility of affecting aggregate outcomes
+  by reducing the saturation of treatment or focusing experiments in districts and
+  electoral systems where treated voters are less likely to be pivotal. These conditions
+  identify novel trade-offs between adhering to ethical commitments and the statistical
+  power and external validity of electoral experiments. More broadly, this paper shows
+  that the formalization of an ethical objective facilitates a closer mapping between
+  ethical considerations and experimental design than is currently practiced.
+authors:
+- name: Tara Slough
+  affiliations:
+  - name: New York University

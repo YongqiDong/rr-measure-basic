@@ -1,0 +1,19 @@
+metadata_version: 1
+name: GERNERMED Named Entity Recognizer
+description: GERNERMED is a named entity recognition (NER) model for medical entities
+  designed for German data.
+tags:
+- Natural Language Processing
+- NER
+- Machine Learning
+- Clinical NLP
+authors:
+- name: Johann Frei
+  affiliations:
+  - name: Universität Augsburg
+- name: Frank Kramer
+  affiliations:
+  - name: Universität Augsburg
+corresponding_contributor:
+  name: Johann Frei
+  email: johann.frei@informatik.uni-augsburg.de

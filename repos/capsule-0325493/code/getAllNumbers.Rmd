@@ -1,0 +1,138 @@
+---
+title: "All Numbers"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+source('/code/global.R')
+source('/code/07_figures/CIPlot.R')
+source('/code/05a_linearModel/LinearModelf.R')
+load("/data/joinDataSources/cleanData/3.RData")
+rawData <- repres$res
+selOuts <- c( "FS_TotalGrayVol","FS_CortexVol")
+```
+
+This document computes all numbers for the day2day paper that are included in the main text.
+
+##Participants
+`r length(unique(rawData$subject))` subjects. Age is not included in the public data due to data security concerns.
+
+Number of observations per particpant: `r min(table(rawData$subject))` to `r max(table(rawData$subject))`
+```{r measuredura,echo=FALSE}
+elapsed <- by(rawData$daysFromFirstScan,rawData$subject,max)
+
+```
+Time elapsed for participants ranged form  `r min(elapsed)/30` to `r max(elapsed)/30` month.
+
+Total number of measurements: `r nrow(rawData)`
+
+```{r measureintas,echo=FALSE}
+projDir <- ''
+timeDiffs <- rep(NA,nrow(rawData)) #actually less values but easier to undertand and code like this
+for (i in 2:nrow(rawData)){
+  if (rawData[i,'subject']==rawData[i-1,'subject'])
+  timeDiffs[i] <- rawData[i,'scanDate']-rawData[i-1,'scanDate']
+}
+timeDiffs <- timeDiffs[!is.na(timeDiffs)]
+```
+Measurement Intervals: Minimum Difference: `r min(timeDiffs)`. Maximum Difference: `r max(timeDiffs)`, Mean Difference `r round(mean(timeDiffs),2)`, SD Difference `r round(sd(timeDiffs),2)`
+
+
+
+#Missingness
+
+##Brain
+```{r missbrain,echo=FALSE}
+sets <- getSettings(paper=1)
+allMissBrain <- getMiss(rawData,sets$outcomes)
+kable(allMissBrain$allmiss)
+```
+
+##Predictors
+```{r misspreds,echo=FALSE}
+#HELIUM IS WRONG BECAUSE IT IS IMPUTED BY ELISAS SCRIPT!!! MISSING HELIUM IS 7 or 7/281=2.49 %
+sets <- getSettings(paper=1)
+allMissCov <- getMiss(rawData,sets$preds)
+kable(allMissCov$allmiss)
+cat(sprintf('%d of %d covariates have missing',sum(allMissCov$allmiss$missRel>0),length(allMissCov$allmiss$missRel)))
+#how much more missing than 5%
+cat(sprintf('%d > 5 percent missing',sum(allMissCov$allmiss$missRel>5)))
+df <- rawData[,c(sets$preds,'subject')]
+dfOmit <- na.omit(df)
+cat(sprintf('%d of %d rows dropped or %f by list wise deletion',nrow(dfOmit),nrow(df),nrow(dfOmit)/nrow(df)))
+```
+
+
+
+#ANOVA-like test
+
+```{r anova,echo=FALSE}
+
+load("/data/joinDataSources/cleanData/prepImpute/impute/repairFactors/linearModelImp/1.RData")
+cRes <-repres$res
+print(summary(cRes[[4]]))
+print(summary(cRes[[5]]))
+```
+
+#Random Forest and LASSO
+``` {r ml,echo=FALSE}
+regPath <- file.path(projDir,'data/joinDataSources/cleanData/prepImpute/impute/repairFactors/linearModelImp/regularizedImp/paper1AllRegErrCor.RData')
+rfPath <- file.path(projDir,'data/joinDataSources/cleanData/prepImpute/impute/repairFactors/addScanQuality/randomForestImp/1.RData')
+
+```
+
+#Within-Variance Improvements
+``` {r within-improvements,echo=FALSE}
+withinImprov <- function(result){
+  within <- 1-result['error']
+  improve <- result['errorRed']/within
+  return(improve)
+}
+
+withinImprov2 <- function(errorBase,errorNew){
+  within <- 1-errorBase
+  withinNew <- 1-errorNew
+  improve <- (within-withinNew)/within
+  return(improve)
+}
+
+load("/data/joinDataSources/cleanData/prepImpute/impute/repairFactors/addScanQuality/getCorrelation/paper1.RData")
+resultsBase <- repres$res$result
+withinImprovDayGray <- withinImprov(resultsBase['FS_TotalGrayVol','daysFromFirstScan',]) 
+withinImprovDayCort <- withinImprov(resultsBase['FS_CortexVol','daysFromFirstScan',])
+
+load("/data/joinDataSources/cleanData/prepImpute/impute/repairFactors/addScanQuality/getCorrelation/paper1WDays.RData")
+resultsDays <- repres$res$result
+withinImprovTimeGray <- withinImprov(resultsDays['FS_TotalGrayVol','scanTime',]) 
+withinImprovTimeCort <- withinImprov(resultsDays['FS_CortexVol','scanTime',])
+
+file.path(projDir,'data/joinDataSources/cleanData/prepImpute/impute/repairFactors/linearModelImp/regularizedImp/paper1AllRegErrCor.RData')
+load("/data/joinDataSources/cleanData/prepImpute/impute/repairFactors/addScanQuality/getCorrelation/paper1WTime.RData")
+resultBoth <- repres$res$result
+withinImprovTotalGray <- withinImprov2(resultsBase['FS_TotalGrayVol',1,'error'],resultBoth['FS_TotalGrayVol',1,'error'])
+withinImprovTotalCort <- withinImprov2(resultsBase['FS_CortexVol',1,'error'],resultBoth['FS_CortexVol',1,'error'])
+
+improvements <- data.frame(outcome=character(),variable=character(),improvement=numeric(),stringsAsFactors = FALSE)
+improvements[1,] <- c("FS_TotalGrayVol","Day",round(100*withinImprovDayGray,digits=2))
+improvements[2,] <- c("FS_CortexVol","Day",round(100*withinImprovDayCort,digits=2))
+improvements[3,] <- c("FS_TotalGrayVol","Time",round(100*withinImprovTimeGray,digits=2))
+improvements[4,] <- c("FS_CortexVol","Time",round(100*withinImprovTimeCort,digits=2))
+improvements[5,] <- c("FS_TotalGrayVol","both",round(100*withinImprovTotalGray,digits=2))
+improvements[6,] <- c("FS_CortexVol","both",round(100*withinImprovTotalCort,digits=2))
+kable(improvements)
+```
+
+
+#Confidence Intervals
+
+```{r CIs,echo=FALSE,results='asis'}
+ sels <- c('lo95','est','hi95')
+ CIs <- CIPlot(plot=FALSE)
+ for (out in selOuts){
+   for (type in c("raw","percent")){
+     print(kable(CIs[[type]][[out]][,sels],digits = 2,caption=paste0(out, ' ' ,type)))
+   }
+ }
+```
+

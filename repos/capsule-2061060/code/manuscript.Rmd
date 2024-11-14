@@ -1,0 +1,1047 @@
+---
+title: "Results section for the manuscript: A Delphi study to strengthen research methods training in British Psychological Society accredited undergraduate programmes"
+author: "Analysis script written by: Robert Thibault"
+date: "2023-07-06"
+output:
+  pdf_document: default
+header-includes:
+- \usepackage[labelformat=empty]{caption}  
+
+---
+<!-- This script analyses the data from the Delphi study preregistered at https://osf.io/5h7bu and outputs summarized datasheets, as well as a pdf with the quantitative aspects of the results section of the associated manuscript -->
+
+```{r setup, include=FALSE}
+# Set the global chunk options
+# "include = FALSE" prevents code chunks from being included in the output document
+knitr::opts_chunk$set(include = FALSE)
+
+library(tidyverse) # for cleaner code
+library(janitor) # for cleaner variable names
+library(kableExtra) # for creating and styling tables
+library(forcats) # for recoding the domain names
+```
+
+```{r clean_data, include=FALSE}
+# This chunk cleans the main dataframe and creates a few different versions of it.
+# The different dataframes include:
+# df1_all / df2_all - all the data (including missing data coded as NA)
+# df1_complete / df2_complete - only the participants who completed Round 1 and/or Round 2 and passed the attention check in Round 1
+# df1_final / df2_final - only participants who completed both rounds and passed the attention check.
+
+# Import the raw data and clean the variable names
+df_raw <- read_csv("../data/1.item_ratings.csv") %>% 
+  janitor::clean_names()
+
+# Exclude data from pilot tests run by Robert Thibault and Madeleine Pownall.
+# Fill in missing data with NAs using the complete() function. 
+# Note, avoid using "fill(domain, .direction = "downup")" as it will causes errors.
+df_raw <- df_raw %>%
+  filter(!(user_id %in% c("BPSRE00001", "BPSRE00002", "BPSRE00180", "BPSRE00181"))) %>%
+  filter(study_round != 0) %>% 
+  complete(user_id, outcome, study_round) %>% 
+  group_by(user_id) %>%
+  fill(stakeholder_group, .direction = "downup") %>% 
+  ungroup()
+
+# Create a mapping from outcomes to index values, then join back to original data
+# Note, this code uses the term "outcome" whereas the manuscript uses the term "item"
+outcome_mapping <- df_raw %>%
+  distinct(outcome) %>%  # Get unique outcomes
+  mutate(index = row_number())
+df_raw <- df_raw %>%
+  left_join(outcome_mapping, by = "outcome") 
+
+# Split the raw data by study round
+df1_all <- df_raw %>% filter(study_round == 1)
+df2_all <- df_raw %>% filter(study_round == 2)
+
+# Function to remove participants who only partially completed the Round 1 or Round 2 of the survey
+remove_incomplete <- function(df, num){
+# Create a temporary dataframe that counts NA ratings for each user
+  temp_df <- df %>% 
+               group_by(user_id) %>% 
+               summarise(count_na = sum(is.na(rating)))
+  
+  # Filter users who have at least 'num' NA ratings
+  users_to_remove <- temp_df %>%
+    filter(count_na > num) %>%
+    pull(user_id)
+  
+  # Remove these users from the original dataframe
+  df <- df %>%
+    filter(!(user_id %in% users_to_remove))
+  
+  return(df)
+}
+
+# Make list of user_ids that failed the attention check
+failed_check <- df1_all %>% filter(grepl("Attention check", outcome), rating != 3)
+
+# Make dfs for participants who completed Round 1 and/or Round 2.
+# NA is set to 7 for Round 1 because there were 7 questions added in Round 2
+# NA is set to 32 for Round 2 because 27 items reached consensus in Round 1 and 5 items weren't displayed properly in Round 2
+df1_completed <- remove_incomplete(df1_all, 7) %>% 
+  #remove users that failed the attention checks
+  filter(!(user_id %in% failed_check$user_id))
+
+df2_completed <- remove_incomplete(df2_all, 32) 
+
+# Make final df that includes only participants that completed both round 1, round 2, and passed the attention check.
+df1_final <- df1_completed %>% 
+  filter(user_id %in% unique(df2_completed$user_id))
+
+df2_final <- df2_completed %>% 
+  filter(user_id %in% unique(df1_completed$user_id))
+
+# We now have 6 dfs. 2 (round1, round2) * 3 (all, completed, final)
+```
+
+```{r create_unique_functions, include=FALSE}
+# Create functions to simplify calculating the participant numbers used in the flowchart
+
+count_unique <- function(df) {
+  unique_count <- df %>%
+    distinct(user_id) %>%
+    n_distinct()
+  
+  return(unique_count)
+}
+
+count_stakeholder <- function(df, stakeholder_value) {
+  unique_count <- df %>%
+    filter(grepl(stakeholder_value, stakeholder_group)) %>%
+    distinct(user_id) %>%
+    n_distinct()
+  
+  return(unique_count)
+}
+
+get_common_user_ids <- function(df1, df2) {
+  common_user_ids <- intersect(df1$user_id, df2$user_id)
+  common_user_ids_df <- data.frame(user_id = common_user_ids)
+  
+  return(common_user_ids_df)
+}
+
+```
+
+```{r make_csv}
+make_csv <- function(df, folder){
+  
+# This chunk was originally its own RMarkdown file used to create graphs and spreadsheets after Round 1, but before we began Round 2. To avoid rewriting the code to run these analyses on Round 2 data, I've turned the RMarkdown file into this R function and then call it.
+
+# Create a folder to store the spreadsheets and graphs. This folder is specific to the input df (eg, Round 2)
+dir.create(folder)
+  
+### {r summary_stats} ###
+
+# Create a function to make summary statistics (sum_stats) for each group
+sum_stats <- function(df, group, negate){
+  df <- df %>%
+    mutate(rating_for_calc = ifelse(rating == 10, NA, rating))
+  # Filter by stakeholder. The negate function is here because some of the groups (e.g., excluding students) need a "!=" operator.
+  if(negate == FALSE){
+    df_new <- df %>% filter(stakeholder_group == group)
+  } else {
+    df_new <- df %>% filter(stakeholder_group != group)
+  }
+  
+  df_new <- df_new %>% 
+    # Group by the outcome/index
+    group_by(index) %>% 
+    # Calculate summary stats
+    summarise(n_responded = sum(!is.na(rating_for_calc)),
+              perc_not_important = sum(rating_for_calc <= 3, na.rm = T)/n_responded,
+              perc_not_essential = sum(rating_for_calc >= 4 & rating <= 6, na.rm = T)/n_responded,
+              perc_essential = sum(rating_for_calc >= 7 & rating_for_calc <= 9, na.rm = T)/n_responded,
+              consensus = if_else(perc_essential >= 0.75, TRUE, FALSE),
+              mean = mean(rating_for_calc, na.rm = T)
+    )
+  
+  # Add the outcomes and domains to the summarised dataframe
+  df_new <- cbind(df_new$index, 
+                  df$outcome[1:79], 
+                  df$domain[1:79], 
+                  df_new %>% select(-index)
+                  ) %>%
+    # Round percentage to two decimal places
+    mutate_if(is.numeric, ~round(., 2))
+  
+  return(df_new)
+}
+
+# Create a separate dataframe for the summary statistics for each group.
+sumStats_combined <- sum_stats(df, "void", TRUE)
+sumStats_noStudents <- sum_stats(df, "1. Student in psychology (or recent graduate)", TRUE)
+sumStats_student <- sum_stats(df, "1. Student in psychology (or recent graduate)", FALSE)
+sumStats_instructor <- sum_stats(df, "2. Research methods instructor in psychology", FALSE)
+sumStats_academic <- sum_stats(df, "3. Academic based in psychology", FALSE)
+sumStats_nonac <- sum_stats(df, "4. Non-academic working in psychology", FALSE)
+
+###{r graphs}###
+
+# Recode "unable to rate" from NA to 0. This is necessary for the function sums_group() to run properly.
+df <- df %>% mutate(rating = ifelse(rating == 10, 0, rating))
+
+# I wrote this chunk before the chunk above. It used wide format data. I will re-filter the data into wide format rather than rewriting the code for long format data
+filter_group <- function(df, group, negate) {
+    # filter by stakeholder
+    if(negate == FALSE){
+      df <- df %>% filter(stakeholder_group == group)
+    } else {
+      df <- df %>% filter(stakeholder_group != group)
+    }
+    df_new <- df %>%
+      # select the variables to include. DO NOT INCLUDE $INDEX. This column has numbers and will incorrectly impact the calculations
+      select(c(user_id, outcome, rating)) %>%
+      pivot_wider(names_from = user_id, values_from = rating)
+    
+    df_new <- df_new %>% 
+                mutate(domain = df$domain[1:79]) %>%
+                relocate(domain, .after = 1)
+    
+    return(df_new)
+}
+
+# create a wide format dataframe for each group
+df_combined <- filter_group(df, "void", TRUE)
+df_noStudents <- filter_group(df, "1. Student in psychology (or recent graduate)", TRUE)
+df_student <- filter_group(df, "1. Student in psychology (or recent graduate)", FALSE)
+df_instructor <-filter_group(df, "2. Research methods instructor in psychology", FALSE)
+df_academic <- filter_group(df, "3. Academic based in psychology", FALSE)
+df_nonac <- filter_group(df, "4. Non-academic working in psychology", FALSE)
+
+
+# create function to calculate the percentage of respondents that selected each rating option (ie, on the scale from 1-9 or "unable to rate"). "j" is the rating and "i" is the outcome index.
+sums_group <- function(df) {
+  sums <- numeric()
+  for (j in 1:10) {
+    sums[j] <- sum(df[i,] == j-1, na.rm = TRUE)
+  }
+  return(sums)
+}
+
+# initialize empty dataframes to hold the "rawStats", by which I mean the count data. This isn't literally raw data, but it is closer to the raw data than the sumStats dataframes.
+rawStats_combined <- data.frame(matrix(ncol = 10, nrow = 79))
+rawStats_noStudents <- data.frame(matrix(ncol = 10, nrow = 79))
+rawStats_student <- data.frame(matrix(ncol = 10, nrow = 79))
+rawStats_instructor <- data.frame(matrix(ncol = 10, nrow = 79))
+rawStats_academic <- data.frame(matrix(ncol = 10, nrow = 79))
+rawStats_nonac <- data.frame(matrix(ncol = 10, nrow = 79))
+
+
+# This function outputs all the figures. It is adapted from the code the DelphiManager Team provides at https://www.comet-initiative.org/delphimanager/docs/R-code-example.txt (accessed 01 Feb 2023)
+
+# loop for all 79 outomes
+for (i in 1:nrow(df_academic)){
+
+# name the output figure and make it the size required by the DelphiManager software
+png(filename = paste0(folder, "/", "outcome_", i, ".png"), width = 900, height = 450)
+
+# This function plots the results side by side by stakeholder group
+par(mfrow=c(1,4))
+
+# First stakeholder group
+# Sum up the count data. This will be used for supplementary datasheets
+student_raw <- matrix(sums_group(df_student), 10,1)
+# Turn the count data into percentages, which will be used for the figures. The "-2" is to remove the $outcome and $domain columns.
+student <- (student_raw / (ncol(df_student)-2)) * 100
+# label the x-axis
+names<-list("X", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+# assign colours to the bars. The "unable to rate" option is in block. Again "-2" is to remove the two columns
+postplot <- barplot(student, beside = TRUE, col = c("black", "green", "green", "green", "green", "green", "green","green", "green", "green"), cex.names=1,names.arg=names,  ylim=c(0,100),  xlab = "Score", ylab = " % of participants ", main = paste0("\n Students and recent graduates (n=", sum(!is.na(df_student[i,3:ncol(df_student)])), ")"), cex=1.5, axes=FALSE,cex.lab=1.2)
+title(paste("\n", df_academic[i,1]), outer=TRUE, cex.main = 1.5)
+axis(2,las=2, lty=1, bty="u")
+
+#Second stakeholder group. Comments as per previous block for First Stakeholder group
+instructor_raw <- matrix(sums_group(df_instructor), 10,1)
+instructor <- (instructor_raw / (ncol(df_instructor)-2)) *100
+names<-list("X", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+postplot <- barplot(instructor, beside = TRUE, col = c("black", "red", "red", "red", "red", "red", "red", "red", "red", "red"), cex.names=1,names.arg=names,  ylim=c(0,100),  xlab = "Score", ylab = "% of participants ", main = paste0("\n Research methods instructors (n=", sum(!is.na(df_instructor[i,3:ncol(df_instructor)])), ")"), cex=1.5, axes=FALSE, cex.lab=1.2)
+axis(2,las=2, lty=1, bty="u")
+
+#Third stakeholder group.
+academic_raw <- matrix(sums_group(df_academic), 10,1)
+academic <- (academic_raw / (ncol(df_academic)-2)) * 100
+names<-list("X", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+postplot <- barplot(academic, beside = TRUE, col = c("black", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue"), cex.names=1,names.arg=names,  ylim=c(0,100),  xlab = "Score", ylab = "% of participants ", main = paste0("\n Academic psychologist (n=", sum(!is.na(df_academic[i,3:ncol(df_academic)])), ")"), cex=1.5, axes=FALSE, cex.lab=1.2)
+axis(2,las=2, lty=1, bty="u")
+
+#Fourth stakeholder group
+nonac_raw <- matrix(sums_group(df_nonac), 10,1)
+nonac <- (nonac_raw / (ncol(df_nonac)-2)) * 100
+names <-list("X", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+postplot <- barplot(nonac, beside = TRUE, col = c("black", "purple", "purple", "purple", "purple", "purple", "purple", "purple", "purple", "purple"), cex.names=1,names.arg=names,  ylim=c(0,100),  xlab = "Score", ylab = " % of participants ", main = paste0("\n Non-academic psychologist  (n=", sum(!is.na(df_nonac[i,3:ncol(df_nonac)])), ")"), cex=1.5, axes=FALSE, cex.lab=1.2)
+axis(2,las=2, lty=1, bty="u")
+
+dev.off()
+
+# make count data for all participants (ie, combined) and for all except students. I don't make figures for these data, as they will not be presented in Round 2.
+combined_raw <- matrix(sums_group(df_combined), 10,1)
+noStudents_raw <- matrix(sums_group(df_noStudents), 10,1)
+
+# make supplementary data tables of count data
+rawStats_combined[i,] <- combined_raw
+rawStats_noStudents[i,] <- noStudents_raw
+rawStats_student[i,] <- student_raw
+rawStats_instructor[i,] <- instructor_raw 
+rawStats_academic[i,] <- academic_raw
+rawStats_nonac[i,] <- nonac_raw
+}
+
+###{r supplementary_datasheets}###
+
+# print out csv datasheets that will be included in the manuscript's open data. These will include all the count data and all the summary statistics for each stakeholder group separately.
+table_out <- function(df1, df2, filename){
+  df <- cbind(df2[, 1:4], df1, df2[, 5:ncol(df2)])
+  colnames(df) <- c("index",
+                    "outcomes",
+                    "domains",
+                    "n_responded",
+                    "n_unable_to_rate",
+                    "n_1", "n_2", "n_3", "n_4", "n_5", "n_6", "n_7", "n_8", "n_9",
+                    "perc_not_important",
+                    "perc_not_essential",
+                    "perc_essential",
+                    "consensus",
+                    "mean"
+  )
+  write_csv(df, paste0(folder, "/", filename))
+  return(df)
+}
+
+combined <- table_out(rawStats_combined, sumStats_combined, "1.combined_datasheet.csv")
+noStudents <- table_out(rawStats_noStudents, sumStats_noStudents, "2.noStudents_datasheet.csv")
+student <- table_out(rawStats_student, sumStats_student, "3.student_datasheet.csv")
+instructor <- table_out(rawStats_instructor, sumStats_instructor, "4.instructor_datasheet.csv")
+academic <- table_out(rawStats_academic, sumStats_academic, "5.academic_datasheet.csv")
+nonac <- table_out(rawStats_nonac, sumStats_nonac, "6.non-academic_datasheet.csv")
+
+
+###{r main_table}###
+# create a new dataframe and column that tells us whether consensus was reached, according to the definition we preregistered. In this case, that is >75% agreement in the academic and instructor groups, as well as across all groups combined (but excluding students). If the non-academic group has more than 12 participants, we would include that group at >75% rather than across groups combined.
+consensus <- data.frame(matrix(ncol = 1, nrow = 79))
+colnames(consensus) <- "consensus"
+
+consensus <- consensus %>% 
+  mutate(consensus = if_else(noStudents$consensus == T &
+                               academic$consensus == T &
+                               instructor$consensus == T,
+                             TRUE, FALSE
+  )
+  )
+
+
+# create simplified table to easily interpret main findings (to be in the main publication)
+main_table <- cbind(combined$index, 
+                    combined$outcomes,
+                    combined$domains,
+                    combined$perc_essential,
+                    academic$perc_essential,
+                    instructor$perc_essential,
+                    consensus$consensus,
+                    combined$mean
+) %>%
+  as.data.frame
+
+colnames(main_table) <- c("index",
+                          "outcome",
+                          "domain",
+                          "combined",
+                          "academics",
+                          "instructors",
+                          "consensus",
+                          "mean"
+)
+
+write_csv(main_table, paste0(folder, "/", "0.main_table.csv"))
+# note, some special characters are off when opening in excel, but they are fine when opening in Google Sheets.
+}
+```
+
+```{r summarize_ratings, eval = TRUE}
+# If "eval = FALSE" is in the line above, it should be removed. That condition is only used when piloting this script to make it knit faster.
+# Call the script which outputs most of the results files
+
+dir.create("../results")
+setwd("../results")
+
+# Create folders for the results
+dir.create("all")
+dir.create("completed")
+dir.create("final")
+
+# Makes spreadsheets and graphs for all six dataframes.
+make_csv(df1_all, "all/Round1")
+make_csv(df2_all, "all/Round2")
+make_csv(df1_completed, "completed/Round1")
+make_csv(df2_completed, "completed/Round2")
+make_csv(df1_final, "final/Round1")
+make_csv(df2_final, "final/Round2")
+
+# This function merges the csv outputs from the two rounds. It also adds a column showing the difference in the percentage of ratings of 'essential' and whether the consensus changed.
+
+combine_rounds <- function(folder){
+    
+  folder1 <- paste0(folder, "/", "Round1", "/")
+  folder2 <- paste0(folder, "/", "Round2", "/")
+  
+  merge_csv <- function(csv){
+    csv1 <- read_csv(paste0(folder1, csv))
+    csv2 <- read_csv(paste0(folder2, csv))
+    csv_merged <- cbind(csv2[, 1:3], csv1[, -(1:3)], csv2[, -(1:3)])
+    names(csv_merged) <- make.unique(names(csv_merged))
+    csv_merged <- csv_merged %>% 
+      mutate(perc_essential_dif = perc_essential.1 - perc_essential) %>% 
+      mutate(consensus_dif = ifelse(is.na(consensus), "new_question",
+                                           ifelse(consensus == consensus.1, "stable",
+                                                  ifelse(consensus == TRUE, "round1",
+                                                  ifelse(consensus != consensus.1, "changed", "error")))))
+  }
+  
+  # Make the spreadsheets that combine Round 1 and Ronud 2 results
+  write_csv(merge_csv("1.combined_datasheet.csv"), paste0(folder, "/", "1.combined_datasheet.csv"))
+  write_csv(merge_csv("2.noStudents_datasheet.csv"), paste0(folder, "/", "2.noStudents_datasheet.csv"))
+  write_csv(merge_csv("3.student_datasheet.csv"), paste0(folder, "/", "3.student_datasheet.csv"))
+  write_csv(merge_csv("4.instructor_datasheet.csv"), paste0(folder, "/", "4.instructor_datasheet.csv"))
+  write_csv(merge_csv("5.academic_datasheet.csv"), paste0(folder, "/", "5.academic_datasheet.csv"))
+  write_csv(merge_csv("6.non-academic_datasheet.csv"), paste0(folder, "/", "6.non-academic_datasheet.csv"))
+  
+  # Same function as above, but with the line about perc_essential_dif changed to 'combined', so it works on the main_table.
+  merge_csv_main <- function(csv, folder1, folder2){
+    csv1 <- read_csv(paste0(folder1, csv))
+    csv2 <- read_csv(paste0(folder2, csv))
+    csv_merged <- cbind(csv2[, 1:3], csv1[, -(1:3)], csv2[, -(1:3)])
+    names(csv_merged) <- make.unique(names(csv_merged))
+    csv_merged <- csv_merged %>% 
+      mutate(perc_essential_dif = combined.1 - combined) %>% 
+      mutate(consensus_dif = ifelse(is.na(consensus), "new_question",
+                                           ifelse(consensus == consensus.1, "stable",
+                                                  ifelse(consensus == TRUE, "round1",
+                                                  ifelse(consensus != consensus.1, "changed", "error")))))
+  }
+  
+  main_table <- merge_csv_main("0.main_table.csv", folder1, folder2)
+  write_csv(main_table, paste0(folder, "/", "0.main_table.csv"))
+
+}
+
+combine_rounds("all")
+combine_rounds("completed")
+combine_rounds("final")
+setwd("../")
+
+# We now created 3 folders with the results for the all, completed, and final dfs. Each folder contains the figures and spreadsheets from Round 1 and Round 2, as well as datasheets that combine Round 1 and Round 2 data -->
+```
+
+```{r clean_domains}
+# This chunk cleans up the domains column
+
+# Import list of shortened version of the items.
+outcomes_cut <- read_csv("items_cut.csv")
+
+# Import the final table with 103 participants, and the complete table with 139 participants for Round 1, which was used to decide which items to remove from Round 2.
+main_table_final <- read_csv("../results/final/0.main_table.csv")
+main_table_completed <- read_csv("../results/completed/0.main_table.csv")
+
+# Add consensus column from complete and shortened item list.
+df <- main_table_final %>% 
+  mutate(outcomes_cut) %>% 
+  mutate(consensus_completed = main_table_completed$consensus)
+
+# Recode $domain for the 5 outcomes that were marked as "misc" due to the bug in the DelphiManager Software.
+df <- df %>%
+  mutate(domain = if_else(grepl("Identify basic study designs", outcome), "RESEARCH DESIGN. Undergraduate students should learn how to…",
+                          if_else(grepl("general computer skills", outcome), "QUANTITATIVE DATA SKILLS. Undergraduate students should learn how to…",
+                                     if_else(grepl("Consider diverse perspectives", outcome), "RESEARCH DESIGN. Undergraduate students should learn how to…",
+                                                if_else(grepl("anonymize data", outcome), "MISCELLANEOUS QUESTIONS", domain)))))
+
+# Recode $domain to fit in a table on the pdf
+df <- df %>%
+  mutate(domain_cut = fct_recode(domain,
+                                        "stats" = "STATISTICAL ANALYSES. Undergraduate students should learn how to CALCULATE / PERFORM…",
+                                        "data" = "QUANTITATIVE DATA SKILLS. Undergraduate students should learn how to…",
+                                        "quant" = "QUANTITATIVE RESEARCH METHODS CONCEPTS. Undergraduate students should learn to DEFINE and EXPLAIN the following concepts…",
+                                        "qual" = "QUALITATIVE RESEARCH METHODS. Undergraduate students should learn to…",
+                                        "design" = "RESEARCH DESIGN. Undergraduate students should learn how to…",
+                                        "OS" = "OPEN SCIENCE AND REPRODUCIBILITY. Undergraduate students should learn to DEFINE and EXPLAIN the following terms or concepts…",
+                                        "resources" = "ACCESSIBILITY OF RESOURCES. Research methods MODULES in undergraduate psychology should…",
+                                        "misc" = "MISCELLANEOUS QUESTIONS"
+                                       )
+        )
+```
+
+```{r create_summary_table, include=FALSE}
+# Create Table 2 for the manuscript.
+
+# This code continues working on the df from the last chunk
+# Merge the data from Round 1 and Round 2 into a single column
+# Take the consensus rating for Round 1 from the 'completed/Round1' data because this is what determined whether an item was included in Round 2.
+df <- df %>%
+  mutate(consensus_completed = if_else(is.na(consensus_completed), FALSE, consensus_completed)) %>% 
+  mutate(consensus_final = if_else(consensus_completed == TRUE, "1",
+                                   if_else(consensus.1 == TRUE, "2",
+                                           "no"))) %>% 
+  mutate(perc_essential = if_else(consensus_completed == TRUE, combined, combined.1)) %>% 
+  mutate(mean_final = if_else(consensus_completed == TRUE, mean, mean.1))
+  
+
+# Order the consensus levels
+df$consensus_final <- factor(df$consensus_final, 
+                             levels = c("1", "2", "no"), 
+                             ordered = TRUE)
+
+# Remove the attention check item from the df
+df <- df %>% filter(!grepl("Attention check", outcome))
+
+# Sort the data by (i) round consensus was reached, and (ii) percentage rating as essential
+df <- df %>% 
+  arrange(consensus_final, desc(perc_essential))
+
+# Select variables to display in Table 2
+summary_table <- df %>% 
+  select(c(outcome_cut,
+           outcome,
+           domain_cut,
+           domain,
+           perc_essential,
+           mean_final,
+           consensus_final)
+         )
+
+# Clean up numbers for presentation
+summary_table <- summary_table %>% 
+  mutate(perc_essential = perc_essential * 100) %>% 
+  mutate(mean_final = mean_final %>% round(1))
+
+# Remove verbatim items and domains from Table 2, as presented in the manuscript
+summary_table_out <- summary_table %>% 
+  select(-c(outcome, domain))
+
+colnames(summary_table_out) <- c("Item ",
+                      "Domain",
+                      "Rated essential (percent)",
+                      "Mean rating",
+                      "Consensus")
+
+# Output the same table, but include the verbatim items and domains
+summary_table_explore <- summary_table
+
+colnames(summary_table_explore) <- c("Item (short)",
+                                     "Item (verbatim)",
+                                     "Domain (short)",
+                                     "Domain (verbatim)",
+                                     "Rated essential (percent)",
+                                     "Mean rating",
+                                     "Consensus")
+
+# Create column to copy-paste from to include in the Consensus summary results section
+temp <- summary_table %>% 
+  mutate(r_input = paste0("`r summary_table$perc_essential[df$outcome_cut == \"",  outcome_cut, "\"]`")
+)
+
+write_csv(summary_table_explore, "../results/table2_verbatim.csv")
+
+# We now have a table that summarizes the main results -->
+```
+
+```{r sensitivity_analysis}
+# Perform a sensitivity analysis between the 'final' df and the 'all' df
+dir.create("../results/sensitivity")
+
+# Function to create a new column that merges data from Round 1 and Round 2
+add_end <- function(filename){
+  df <- read_csv(filename) %>% 
+    mutate(consensus_end = if_else(is.na(consensus.1), consensus, consensus.1)) %>% 
+    mutate(perc_essential_end = if_else(is.na(combined.1), combined, combined.1)) %>% 
+    mutate(mean_end = if_else(is.na(mean.1), mean, mean.1))
+  
+  return(df)
+}
+
+# Same as previous function, but to compare stakeholder groups within the 'final' dfs
+add_end_group <- function(filename){
+  df <- read_csv(filename) %>% 
+    mutate(consensus_end = if_else(is.na(consensus.1), consensus, consensus.1)) %>% 
+    mutate(perc_essential_end = if_else(is.na(perc_essential.1), perc_essential, perc_essential.1)) %>% 
+    mutate(mean_end = if_else(is.na(mean.1), mean, mean.1))
+  
+  return(df)
+}
+
+# Creates new columns comparing the data from 'final' and 'all', or between stakeholder groups
+compare_end <- function(df1, df2){
+  df<- cbind(df1, df2) 
+  colnames(df) <- make.unique(colnames(df))
+
+  df <- df %>% 
+    mutate(consensus_compare = if_else(consensus_end == consensus_end.1, FALSE, TRUE)) %>% 
+    mutate(perc_essential_compare = perc_essential_end - perc_essential_end.1) %>% 
+    mutate(mean_compare = mean_end - mean_end.1)
+  
+  return(df)
+}
+
+# Perform sensitivity analysis for final vs all
+main_table_final <- add_end("../results/final/0.main_table.csv")
+main_table_all <- add_end("../results/all/0.main_table.csv")
+main_table_final_all <- compare_end(main_table_final, main_table_all)
+
+# Create a datasheet that readers can explore if they want to look at differences between the final sample and the all sample
+final_all_out <- main_table_final_all %>% 
+  select(c(index,
+           outcome,
+           domain,
+           consensus_end,
+           perc_essential_end,
+           mean_end,
+           consensus_end.1,
+           perc_essential_end.1,
+           mean_end.1,
+           consensus_compare,
+           perc_essential_compare,
+           mean_compare
+           ))
+
+colnames(final_all_out) <- c("index",
+           "outcomes",
+           "domains",
+           "consensus_final",
+           "perc_essential_final",
+           "mean_final",
+           "consensus_all",
+           "perc_essential_all",
+           "mean_all",
+           "consensus_compare",
+           "perc_essential_compare",
+           "mean_compare"
+           )
+
+write_csv(final_all_out, "../results/sensitivity/final_all.csv")
+
+# Perform comparison between instructors and academics
+instructor <-add_end_group("../results/final/4.instructor_datasheet.csv")
+academic <-add_end_group("../results/final/5.academic_datasheet.csv")
+instructor_academic <- compare_end(instructor, academic)
+
+# Create a datasheet that readers can explore if they want to look at differences between instructors and academics.
+instructor_academic_out <- instructor_academic %>% 
+  select(c(index,
+           outcomes,
+           domains,
+           consensus_end,
+           perc_essential_end,
+           mean_end,
+           consensus_end.1,
+           perc_essential_end.1,
+           mean_end.1,
+           consensus_compare,
+           perc_essential_compare,
+           mean_compare
+           ))
+
+colnames(instructor_academic_out) <- c("index",
+           "outcomes",
+           "domains",
+           "consensus_instructor",
+           "perc_essential_instructor",
+           "mean_instructor",
+           "consensus_academic",
+           "perc_essential_academic",
+           "mean_academic",
+           "consensus_compare",
+           "perc_essential_compare",
+           "mean_compare"
+           )
+
+write_csv(instructor_academic_out, "../results/sensitivity/instructor_academic.csv")
+
+# compare Round1 and Round2 
+compare_rounds <- read_csv("../results/final/0.main_table.csv") %>% 
+  filter(!is.na(consensus.1) & !is.na(consensus)) %>% 
+  mutate(consensus_compare = if_else(consensus == consensus.1, FALSE, TRUE)) %>% 
+  mutate(perc_essential_compare = combined - combined.1) %>% 
+    mutate(mean_compare = mean - mean.1)
+
+# Create a datasheet that readers can explore if they want to look at differences between Round 1 and Round 2
+compare_rounds_out <- compare_rounds %>% 
+  select(c(index,
+           outcome,
+           domain,
+           consensus,
+           combined,
+           mean,
+           consensus.1,
+           combined.1,
+           mean.1,
+           consensus_compare,
+           perc_essential_compare,
+           mean_compare
+           ))
+
+colnames(compare_rounds_out) <- c("index",
+           "outcomes",
+           "domains",
+           "consensus_1",
+           "perc_essential_1",
+           "mean_1",
+           "consensus_2",
+           "perc_essential_2",
+           "mean_2",
+           "consensus_compare",
+           "perc_essential_compare",
+           "mean_compare"
+           )
+
+write_csv(compare_rounds_out, "../results/sensitivity/round1_round2.csv")
+
+# create dataframe for the Sensitivity table
+sensitivity_out <-data.frame("Rounds" = c(sum(compare_rounds$consensus_compare),
+                                                 mean(abs(compare_rounds$perc_essential_compare))*100,
+                                                 mean(abs(compare_rounds$mean_compare))
+                                                 ),
+                             "Stakeholders" = c(sum(instructor_academic$consensus_compare),
+                                                 mean(abs(instructor_academic$perc_essential_compare))*100,
+                                                 round(mean(abs(instructor_academic$mean_compare)),2)
+                                                 ),
+                             "Sample" = c(sum(main_table_final_all$consensus_compare),
+                                                 mean(abs(main_table_final_all$perc_essential_compare))*100,
+                                                 mean(abs(main_table_final_all$mean_compare))
+                                                 )
+)
+
+# format the table as.character() so that the numbers within each column can be rounded to different decimal places.
+temp1 <- sensitivity_out[1,] %>% 
+           round(0) %>%
+           mutate_if(is.numeric, as.character)
+
+temp2 <- sensitivity_out[2,] %>% 
+           round(1) %>%
+           mutate_if(is.numeric, as.character)
+
+temp3 <- sensitivity_out[3,] %>% 
+           round(2) %>%
+           mutate_if(is.numeric, as.character)
+
+sensitivity_out <-  rbind(temp1, temp2, temp3)
+
+sensitivity_out <- cbind("Differences" = c("Reached consensus (n item)",
+                                                 "Rated essential (percentage)",
+                                                 "Rating (mean)"
+                                                 ),
+                         sensitivity_out)
+
+```
+
+```{r domains_table}
+# Make supplementary table showing the percentage of items reaching consensus in for each domain
+df_domains <- summary_table %>% 
+  group_by(domain_cut) %>% 
+  summarise(num_consensus = sum(consensus_final != "no"),
+            total = n(),
+            perc_consensus = round(num_consensus / total, 2)*100) %>% 
+  arrange(desc(perc_consensus))
+
+colnames(df_domains) <- c("Domain",
+                          "Items reaching consensus",
+                          "Items total",
+                          "% reaching consensus"
+                          )
+```
+
+```{r participant_characteristics_table, echo = FALSE}
+# Make table to display the participant characteristcs (Table 1)
+
+user_data <- read_csv("../data/4.participant_characteristics.csv")
+
+# Isolate data from users who at least began Round 2.
+user_data2_only <- user_data %>% 
+  filter(current_round == 2)
+
+# Create shape of table
+df_expertise <- data.frame(
+  Category = c("Primarily do quantitative psychology research",
+               "Primarily do qualitative psychology research",
+               "Do similar level of quantitative and qualitative research",
+               "Self-identified as research methods expert", 
+               "Undergraduate Programme Director"
+               ),
+  Sum = c(sum(user_data2_only$quant),
+          sum(user_data2_only$qual), 
+          sum(user_data2_only$both),
+          sum(user_data2_only$expert), 
+          sum(user_data2_only$director)
+          )
+)
+colnames(df_expertise) <- c("Var1", "Freq")
+
+df_location <- as.data.frame(sort(table(user_data2_only$uk_affiliation), decreasing = TRUE))
+df_location$Var1 <- c("Live in UK",
+                      "Associated with BPS accredited programme outside the UK",
+                      "Not associated with the UK"
+                      )
+
+table1 <- bind_rows(df_expertise,
+      as.data.frame(sort(table(user_data2_only$employer), decreasing = TRUE)),
+      df_location
+      )
+colnames(table1) <- c("Participant charactristic", "n = 125")
+
+```
+
+```{r feedback}
+# Calculates info about the number of open-ended feedback to specific items
+
+# Filter for only Rating that come with feedback
+feedback <- df_raw %>%
+  filter(!is.na(feedback))
+
+feedback_count <- feedback %>% 
+  count(user_id, name = "frequency") %>%
+  arrange(desc(frequency))
+
+feedback_n_unique <- length(unique(feedback$user_id))
+
+```
+
+```{r additional_outcomes}
+# As per 'feedback' chunk, but for additional outcomes
+add_outcomes <- read_csv("../data/6.additional_outcomes_suggested.csv")
+
+add_outcomes_count <- add_outcomes %>% 
+  count(user_id, name = "frequency") %>%
+  arrange(desc(frequency))
+
+add_outcomes_n_unique <- length(unique(add_outcomes$user_id))
+
+```
+
+```{r rating_change}
+# As per 'feedback' chunk, but for reasons for changing ratings
+rating_change <- read_csv("../data/3.rating_change_reasons.csv") 
+
+rating_change_count <- rating_change %>% 
+  count(study_id, name = "frequency") %>%
+  arrange(desc(frequency))
+
+rating_change_n_unique <- length(unique(rating_change$study_id))
+```
+<!--OUTPUT-->
+
+## Participants
+
+Figure 2 provides a flowchart of participant inclusion. `r count_unique(df1_all)` participants began Round 1. Items reaching consensus after Round 1 were based on the `r count_unique(df1_completed)` participants who passed the attention check and completed Round 1. Our final sample comprised `r count_unique(df1_final)` participants who passed the attention check and completed both Round 1 and Round 2. The open data includes datasheets for each of: the final sample, the participants who completed at least one round, and all participants who at least began Round 1. 
+
+![**Figure 2. Flowchart of participant inclusion in the final sample.**The feedback presented during Round 2 came from the participants in the bottom right box ‘Sample for items that reached consensus in Round 1’. Blue boxes indicate participants that were excluded.](flowchart.PNG)
+
+**Numbers for the flowchart**  
+There numbers are calculated in R and then manually inserted into the powerpoint slide that makes the flowchart.  
+
+Began Round 1. `r count_unique(df1_all)`  
+Invited to Round 2. `r count_unique(df1_all)`  
+Began Round 2. `r remove_incomplete(df2_all, 78) %>% count_unique()`  
+Completed Round 2. `r count_unique(df2_completed)`  
+
+Final sample. `r count_unique(df1_final)`
+Including...  
+Student. `r count_stakeholder(df1_final, "1. Student")`  
+Instructor. `r count_stakeholder(df1_final, "instructor")`  
+Academic. `r count_stakeholder(df1_final, "3. Academic")`  
+Non-academic. `r count_stakeholder(df1_final, "4. Non-academic")`  
+
+Failed Round 1 attention check. `r count_unique(failed_check)`  
+Did not complete Round 1. `r count_unique(df1_all) - remove_incomplete(df1_all, 7) %>% count_unique()`  
+Did not start Round 2. `r count_unique(df1_all) - remove_incomplete(df2_all, 78) %>% count_unique()`  
+Did not complete Round 2. `r remove_incomplete(df2_all, 78) %>% count_unique() - count_unique(df2_completed)` 
+Failed Round 1 attention check. `r nrow(get_common_user_ids(df2_completed, failed_check))`  
+Did not complete Round 1. `r count_unique(df2_completed) - count_unique(df1_final) - nrow(get_common_user_ids(df2_completed, failed_check))`
+
+Sample for items that reached consensus in Round 1. `r count_unique(df1_completed)`  
+Including...  
+Student. `r count_stakeholder(df1_completed, "1. Student")`  
+Instructor. `r count_stakeholder(df1_completed, "instructor")`  
+Academic. `r count_stakeholder(df1_completed, "3. Academic")`  
+Non-academic. `r count_stakeholder(df1_completed, "4. Non-academic")`  
+
+Number of Round 2 participants we counted as complete even though they only responded to 47 of the 52 items. `r remove_incomplete(df2_all, 32) %>% count_unique() - remove_incomplete(df2_all, 27) %>% count_unique()` 
+There was a bug in the DelphiManager software that stopped 5 of the additional items from being displayed for several participants. When we discovered the bug, we sent these participants an email requesting that they complete the 5 items that were missing.
+
+
+Table 1 outlines participant characteristics[^1]. The majority of participants who completed Round 2 primarily do quantitative research and are employed by universities. 
+
+```{r, characteristics_table_out, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(table1, caption = "Table 1. Characteristics of participants who at least began Round 2", booktabs = T, linesep = "\\addlinespace") %>%
+kable_styling() %>%
+  pack_rows("Expertise", 1, 5) %>%
+  pack_rows("Primary employer", 6, 13) %>%
+  pack_rows("Relation to UK Psychology", 14, 16) %>% 
+  kable_styling(latex_options = "striped") %>% 
+  add_footnote("Participants could select multiple responses for the ‘Expertise’ characteristic.", notation = "none", threeparttable = T)
+```
+
+\newpage
+
+## Delphi item ratings
+
+`r sum(summary_table$consensus_final == "1")` items reached consensus in Round 1 and were not included in Round 2. The Steering Committee added 7 items to Round 2, which thus contained a total of 52 items[^2]. 
+
+`r sum(summary_table$consensus_final == "2")` reached consensus in Round 2. `r sum(summary_table$consensus_final == "no")` items did not reach consensus. Two of the items reaching consensus in Round 2 were added after Round 1 was complete, and 2 others had already reached consensus among the final sample of 103 participants (but not among the 139 who completed Round 1). Thus, among the final sample, only 4 items shifted from not reaching consensus in Round 1 to reaching consensus in Round 2. Across all `r count_unique(df1_final)` participants, regardless of stakeholder group, the median percent of participants rating an item as *essential* was `r round(median(summary_table$perc_essential), 0)`% (IQR: `r round(quantile(summary_table$perc_essential, 0.25), 0)`% to `r round(quantile(summary_table$perc_essential, 0.75), 0)`%). The median of the average (mean) rating across the 78 items was `r round(median(summary_table$mean_final), 1)` (IQR: `r round(quantile(summary_table$mean_final, 0.25), 1)` to `r round(quantile(summary_table$mean_final, 0.75), 1)`). 
+
+Table 2 presents the results for each of the 78 items. To explore these results, we recommend opening the spreadsheet available at https://osf.io/57mbd. This spreadsheet includes the verbatim items and domains, which could not easily fit in a pdf, but which contain important keywords. For example, whereas some items asked if students should learn how to *apply* a technique, others asked if students should learn to *define* a concept. Summary statistics for each stakeholder group, all stakeholder groups except students, and all stakeholder groups together are provided in the open data.
+
+```{r items_table_out, include = TRUE, echo = FALSE, results = "asis"}
+kable(summary_table_out, 
+      caption = "Table 2. Rating and consensus for the 78 Delphi items", 
+      booktabs = TRUE, 
+      linesep = "", 
+      format = "latex", 
+      longtable = TRUE, 
+      escape = FALSE) %>% 
+  kable_styling(latex_options = c("striped"), 
+                font_size = 10) %>%
+  column_spec(2, width = "1.5cm") %>% 
+  column_spec(3, width = "1.8cm") %>% 
+  column_spec(4, width = "1cm") %>% 
+  column_spec(5, width = "1.2cm") %>% 
+  footnote(general = "Items are ordered by the column ‘Consensus’ then ‘Rated essential (percentage)’. Many items have been paraphrased so they can fit in this table. The domains have been shortened (stats = statistical analyses; data = quantitative data skills; quant = quantitative research methods concepts; qual = qualitative research methods; design = research design; OS = reproducibility and open science; resources = accessibility of resources; misc = miscellaneous). Full verbatim descriptions of the items and domains are available in the following spreadsheet: https://osf.io/57mbd. The rating scale ranges from 1 to 9, where 1-3 is “not important” 4-6 is “important, but not essential”, and 7-9 is “essential”. The consensus column contains a value of 1 if consensus was reached in Round 1,  2 if reached in Round 2, and ‘no’ if consensus was not reached. Items that reached consensus in Round 1 have the columns ‘Rated essential (percent)’ and ‘mean rating’ taken from Round 1 (because these questions were not included in Round 2).", 
+            threeparttable = TRUE,
+           general_title = "")
+```
+\newpage 
+
+We performed three sets of sensitivity analyses. We assessed differences in ratings between (i) Round 1 and Round 2, (ii) the instructor and academic stakeholder groups, and (iii) the initial sample of 170 participants and the final sample of 103 participants (see Table 3). We did not compare results from the students and non-academic stakeholder groups because they had few enough participants that the comparisons would be uninformative or potentially misrepresentative. Relatively small differences in ratings occurred between rounds and between stakeholders. The open-ended responses revealed several reasons for why participants changed their ratings between rounds, including viewing the ratings of other participants, reflecting further, discussing with colleagues or students, and gaining further knowledge after Round 1. Results were very similar between the sample of participants that at least began Round 1 (170 participants) and the final sample (103 participants).
+
+```{r, sensitivity_table_out, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(sensitivity_out, 
+             caption = "Table 3. Sensitivity analyses between Delphi rounds, stakeholder groups, and initial and final samples", 
+             booktabs = T, 
+             linesep = "\\addlinespace",
+             align = rep(c('l', 'r', 'r', 'r'))) %>% 
+  kable_styling(latex_options = c("striped")) %>%
+  add_footnote("Of the 47 items included in both Round 1 and Round 2: Four went from not reaching consensus to reaching consensus, the median absolute change in the percentage of participants that rated an item as essential was 3.8%, and the median absolute difference in participants’ rating of an item was 0.15. We found slightly larger differences between the final ratings from the instructor and academic stakeholders groups. Only small differences existed between ratings from the sample of participants who at least began Round 1 and the final sample.", 
+            notation = "none",
+            threeparttable = TRUE
+            )
+```
+\newpage 
+
+## Consensus summary results
+
+In this section, we block related items into 13 overarching findings (see Table 4). We conceived these blocks based on whether the items reached consensus and whether they can be interpreted together to help formulate a specific recommendation[^3]. In brackets, we present the percentage of all participants who rated an item as 'essential'.
+
+```{r summary_table}
+
+# Create a data frame
+table4 <- data.frame("Consensus largely reached" = c("Understanding data", 
+                                                     "Research design (general)", 
+                                                     "Descriptive statistics", 
+                                                     "Inferential statistics", 
+                                                     "Critical assessment",
+                                                     ""),
+                     "Consensus reached for some items" = c("Qualitative methods", 
+                                                            "Reproducibility and open science",
+                                                            "",
+                                                            "",
+                                                            "",
+                                                            ""),
+                     "Consensus largely not reached" = c("Advanced analysis techniques",
+                                                         "Research design (specific)",
+                                                         "Approaches to research", 
+                                                         "Computer skills", 
+                                                         "Module format", 
+                                                         "Final year projects")
+                     
+)
+
+colnames(table4) <- c("Consensus largely reached",
+                      "Consensus reached for some items",
+                      "Consensus largely not reached")
+
+
+
+
+```
+
+```{r summary_table_out, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(table4, caption = "Table 4. Recommendation topics derived from consensus results", booktabs = T, linesep = "\\addlinespace") %>%
+  kable_styling(latex_options = "striped")
+```
+
+### Consensus largely reached
+
+**Understanding data.** Consensus was reached that students should learn how to identify and categorise different types of data (`r summary_table$perc_essential[df$outcome_cut == "Identify and categorise different types of data"]`%), clean data (`r summary_table$perc_essential[df$outcome_cut == "Clean data"]`%), anonymise data (`r summary_table$perc_essential[df$outcome_cut == "Anonymize data"]`%), and represent quantitative data visually (`r summary_table$perc_essential[df$outcome_cut == "Represent data visually"]`%). 
+
+**Research design (general).** Consensus was reached that students should learn how to formulate a research question (`r summary_table$perc_essential[df$outcome_cut == "Formulate a research question"]`%), design a study to answer a specific research question (`r summary_table$perc_essential[df$outcome_cut == "Design a study"]`%), explain the difference between a research question and a hypothesis (`r summary_table$perc_essential[df$outcome_cut == "Explain research question vs hypothesis"]`%), and identify basic study designs (`r summary_table$perc_essential[df$outcome_cut == "Identify basic study designs"]`%). Consensus was also reached for learning how to create a sampling plan (`r summary_table$perc_essential[df$outcome_cut == "Create a sampling plan and data collection plan"]`%), operationalise all elements of a study (`r summary_table$perc_essential[df$outcome_cut == "Operationalize all elements of a study"]`%), and apply experimental and non-experimental research designs (`r summary_table$perc_essential[df$outcome_cut == "Apply experimental and non-experimental research designs"]`%). 
+
+**Descriptive statistics.** Consensus was reached that students should learn how to calculate descriptive statistics (`r summary_table$perc_essential[df$outcome_cut == "Descriptive statistics"]`%), explain the importance of descriptive statistics and how they differ from inferential statistics (`r summary_table$perc_essential[df$outcome_cut == "How descriptive statistics differ from inferential statistics"]`%), and use descriptive statistics effectively before learning to perform inferential statistical tests (`r summary_table$perc_essential[df$outcome_cut == "Use descriptive statistics before inferential statistics"]`%).
+
+**Inferential statistics.** Consensus was reached that students should learn how to calculate significance tests (`r summary_table$perc_essential[df$outcome_cut == "Significance tests"]`%), regressions (`r summary_table$perc_essential[df$outcome_cut == "Regression"]`%), effect sizes (`r summary_table$perc_essential[df$outcome_cut == "Effect sizes"]`%), and parameter estimations (e.g., confidence intervals) (`r summary_table$perc_essential[df$outcome_cut == "Parameter estimation (95% CIs)"]`%). Consensus was also reached that students should learn to define and explain probability and randomness (`r summary_table$perc_essential[df$outcome_cut == "Probability and randomness"]`%), and almost reached that students should learn to explain the existence of different statistical approaches, including parameter estimation and significance testing (`r summary_table$perc_essential[df$outcome_cut == "The existence of different statistical approaches"]`%).
+
+**Critical assessment.** Consensus was reached that students should learn how to identify and assess ethical issues (`r summary_table$perc_essential[df$outcome_cut == "Identify and assess ethical issues"]`%), assess validity and reliability (`r summary_table$perc_essential[df$outcome_cut == "Assess validity and reliability"]`%), define and explain the difference between statistical significance and practical significance (`r summary_table$perc_essential[df$outcome_cut == "Practical significance"]`%), and define and explain the value of exploratory research and how it differs from confirmatory research (`r summary_table$perc_essential[df$outcome_cut == "How exploratory research and confirmatory research differ"]`%). Defining and explaining systematic reviews and meta-analysis (`r summary_table$perc_essential[df$outcome_cut == "Systematic reviews and meta-analysis"]`%) did not reach consensus.
+
+### Consensus reached for some items
+
+**Qualitative research.** Learning to critically appraise qualitative research reached consensus (`r summary_table$perc_essential[df$outcome_cut == "Critically appraise qualitative research"]`%). Several other qualitative items almost reached consensus, including learning to demonstrate understanding of several methods of qualitative data analysis (`r summary_table$perc_essential[df$outcome_cut == "Demonstrate understanding of qual data analysis methods"]`%), perform qualitative analysis (`r summary_table$perc_essential[df$outcome_cut == "Perform qualitative analysis"]`%), use reflexive practice (`r summary_table$perc_essential[df$outcome_cut == "Use reflexive practice"]`%), demonstrate understanding of various qualitative frameworks (`r summary_table$perc_essential[df$outcome_cut == "Demonstrate understanding of qualitative frameworks"]`%), and demonstrate understanding of mixed methods research (`r summary_table$perc_essential[df$outcome_cut == "Demonstrate understanding of mixed methods research"]`%). Some qualitative items did not reach consensus, including learning to collect qualitative data (`r summary_table$perc_essential[df$outcome_cut == "Collect qualitative data"]`%), explain the philosophical underpinnings of qualitative research (`r summary_table$perc_essential[df$outcome_cut == "Explain philosophical underpinnings of qual research"]`%), and apply qualitative frameworks in their own research (`r summary_table$perc_essential[df$outcome_cut == "Apply qualitative frameworks"]`%). Several participants left open-ended comments about qualitative research methods, which are analysed in the manuscript section Theme 1: Important factors.
+
+**Reproducibility and open science.** Several items related to reproducibility and open science reached consensus, including that students should learn to define and explain sources of bias (`r summary_table$perc_essential[df$outcome_cut == "Sources of bias"]`%), cognitive biases (`r summary_table$perc_essential[df$outcome_cut == "Cognitive biases"]`%), questionable research practices (QRPs) (`r summary_table$perc_essential[df$outcome_cut == "Questionable Research Practices (QRPs)"]`%), generalisability and robustness (`r summary_table$perc_essential[df$outcome_cut == "Generalisability and robustness"]`%), research misconduct (`r summary_table$perc_essential[df$outcome_cut == "Research misconduct"]`%), and replication studies and reproducibility (`r summary_table$perc_essential[df$outcome_cut == "Research misconduct"]`%).
+
+Other items that almost reached consensus include learning to define and explain the replication crisis (`r summary_table$perc_essential[df$outcome_cut == "The \"replication crisis\""]`%), and define and explain data, code and material sharing (`r summary_table$perc_essential[df$outcome_cut == "Data, code, and material sharing"]`%). Items more focused on the process of research did not reach consensus, including learning to define and explain the publication process (`r summary_table$perc_essential[df$outcome_cut == "The publication process"]`%), reward structures in research and academia (`r summary_table$perc_essential[df$outcome_cut == "Reward structures in research and academia"]`%), preregistration and Registered Reports (`r summary_table$perc_essential[df$outcome_cut == "Preregistration and Registered Reports"]`%), and meta-research (`r summary_table$perc_essential[df$outcome_cut == "Meta-research / meta-science"]`%).
+
+### Consensus largely not reached
+
+**Advanced analysis techniques.** More advanced analysis techniques did not reach consensus, including learning to perform equivalence testing (`r summary_table$perc_essential[df$outcome_cut == "Equivalence testing"]`%), perform factor analysis (`r summary_table$perc_essential[df$outcome_cut == "Factor analysis"]`%), simulate data (`r summary_table$perc_essential[df$outcome_cut == "Simulate data"]`%), and explain multiverse analyses / many-analyst approaches (`r summary_table$perc_essential[df$outcome_cut == "Multiverse analyses / many-analyst approaches"]`%). 
+
+
+**Research design (specific).** Items on research designs specific to certain study types did not reach consensus, including learning how to design a survey (`r summary_table$perc_essential[df$outcome_cut == "Design a survey"]`%), apply blinding and randomisation (`r summary_table$perc_essential[df$outcome_cut == "Apply blinding and randomization"]`%), and explain psychometrics (`r summary_table$perc_essential[df$outcome_cut == "Psychometrics"]`%). Items about sample size and effect sizes also did not reach consensus, including learning to perform a sample size calculation for quantitative research (`r summary_table$perc_essential[df$outcome_cut == "Perform sample size calculations"]`%), determine a smallest effect size of interest (`r summary_table$perc_essential[df$outcome_cut == "Determine a smallest effect size of interest (SESOI)"]`%), and explain alternative measures of effect sizes (e.g.; probability of superiority) (`r summary_table$perc_essential[df$outcome_cut == "Alternative measures of effect sizes"]`%). Learning to select a sample size relevant to the qualitative method being used (`r summary_table$perc_essential[df$outcome_cut == "Select a sample size for qualitative research"]`%) almost reached consensus. 
+
+**Approaches to research.** Consensus was not reached that students should learn how to consider diverse perspectives when designing a study (`r summary_table$perc_essential[df$outcome_cut == "Consider diverse perspectives when designing a study"]`%), define and explain philosophy of science (`r summary_table$perc_essential[df$outcome_cut == "Philosophy of science"]`%), or define and explain the existence of different statistical frameworks; including frequentist statistics and Bayesian statistics (`r summary_table$perc_essential[df$outcome_cut == "The existence of different statistical frameworks"]`%).
+
+**Computer skills.** Consensus was not reached regarding whether students should learn how to use a programming language to manage and analyse data (`r summary_table$perc_essential[df$outcome_cut == "Use a programming language"]`%) or use a statistical analysis package with a graphical user interface (`r summary_table$perc_essential[df$outcome_cut == "Use GUI statistical analysis package"]`%). Whether research methods modules should only use freely available software (`r summary_table$perc_essential[df$outcome_cut == "Only use freely available software"]`%) did not reach consensus. Consensus was almost reached for learning to demonstrate general computer skills for research (`r summary_table$perc_essential[df$outcome_cut == "Demonstrate general computer skills for research"]`%) and search and collate published research (`r summary_table$perc_essential[df$outcome_cut == "Search and collate published research"]`%).
+```{r}
+```
+**Module format.** No items regarding the format of modules reached consensus, including to never entirely grade with closed-book exams (`r summary_table$perc_essential[df$outcome_cut == "Never entirely grad using closed-book exams"]`%), emphasise skills that transfer beyond an academic research context (`r summary_table$perc_essential[df$outcome_cut == "Emphasize skills that transfer beyond academic research"]`%), have a higher staff to student ratio than for non-research methods modules (`r summary_table$perc_essential[df$outcome_cut == "Higher staff to student ratiofor research methods modules"]`%), provide students with syllabi that include a week-by-week outline of the module contents (`r summary_table$perc_essential[df$outcome_cut == "Provide syllabi with week-by-week module outline"]`%), or make syllabi publicly available (`r summary_table$perc_essential[df$outcome_cut == "Make syllabi publicly available"]`%). Actively employing teaching and grading methods known to reduce ‘statistics anxiety’ (`r summary_table$perc_essential[df$outcome_cut == "Employ methods known to reduce \"statistics anxiety\""]`%) almost reached consensus. 
+```{r}
+```
+**Final year projects.** Consensus was reached that students should have the option to conduct a qualitative; quantitative; or mixed-methods project in their final year research (`r summary_table$perc_essential[df$outcome_cut == "Option for qual, quant, or mixed-methods final year project"]`%). Consensus was not reached on whether students should preregister the quantitative aspects of their final year project (`r summary_table$perc_essential[df$outcome_cut == "Preregister quantitative aspects of final year project."]`%), be allowed to perform a replication as their final year research project (`r summary_table$perc_essential[df$outcome_cut == "Allowed to perform a replication as their final year project"]`%), or be allowed to conduct their final year project in a team (`r summary_table$perc_essential[df$outcome_cut == "Allowed to conduct their final year project in a team."]`%).
+
+## Thematic analysis of the open-ended questions
+
+Participants provided written responses to open-ended questions. These included feedback from `r feedback_n_unique` participants on `r nrow(feedback)` specific items; from `r add_outcomes_n_unique` participants for `r nrow(add_outcomes)` suggested items; and from `r rating_change_n_unique` participants regarding `r nrow(rating_change)` ratings that crossed a rating boundary (e.g., from 'important, but not essential' to 'essential'). A small number of participants were responsible for large portions of these open-ended responses (shown in Supplementary Table 1). `r sum(user_data$comments1 != "", na.rm = TRUE)` participants left a general comment after Round 1, and `r sum(user_data$comments2 != "", na.rm = TRUE)` participants left a general comment after Round 2.
+
+[the remainder of this section does note rely on quantitative data, and thus does not appear in this .Rmd output]
+
+\newpage
+
+## Data for Supplementary Tables.
+
+### Feedback on items
+
+```{r table_feedback, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(feedback_count)
+```
+
+### Items suggested to include
+
+```{r table_additional_items, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(add_outcomes_count)
+```
+\newpage
+### Reasoning for changing a rating across a boundary
+
+```{r table_rating_change, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(rating_change_count)
+```
+
+\newpage
+
+```{r domains_out, include = TRUE, echo = FALSE, results = "asis"}
+knitr::kable(df_domains, caption = "Supplementary Table 2. Items reaching consensus grouped by domain", booktabs = T, linesep = "\\addlinespace") %>%
+  kable_styling(latex_options = "striped")
+```
+
+
+[^1]: We preregistered that we would remove participants who responded that they were not associated with the UK. Four participants from our initial sample and one from our final sample selected this response. However, because the participant registration information could not be linked with the participant ratings (as explained in the Analyses section of the methods), we could not exclude these participants’ ratings.
+
+[^2]: 72 (Round 1 items) - 26 (items that reached consensus) - 1 (attention check) + 7 (new items) = 52 (Round 2 items).
+
+[^3]: Some of these blocks overlap with how the survey was presented: in 8 blocks, or ‘domains’. However, whereas those domains were based only on the overarching topic of the items, the blocks in this section incorporate both the topic and the consensus results.

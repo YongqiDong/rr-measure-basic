@@ -1,0 +1,22 @@
+#---- R auxiliary files -----
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+#---- MAC auxiliary files -----
+.DS_store
+
+#---- LaTeX auxiliary files ----
+*.bbl
+*.bcf
+*concordance.tex
+*.lof
+*.log
+*.lot
+*.run.xml
+*.synctex.gz
+*.toc
+
+#---- HTML files ----
+README.html

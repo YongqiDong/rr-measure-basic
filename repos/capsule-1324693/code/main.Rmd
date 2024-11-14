@@ -1,0 +1,387 @@
+---
+title: "Murray et al. 2002 Study 3 Replication Study"
+output:
+  html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#make sure that you have a recent version of Rstudio and that all needed packages are in your library (download them if they are not); packages that are loaded in other chunks, and not called immediately below, include: corrplot, pastecs, compute.es, ggplot2, lm.beta
+library(plyr) 
+library(psych)
+library(dplyr)
+library(broom)
+library(magrittr)
+library(tidyr)
+library(readr)
+# Read data using readr package; missing values specified in parans following "na""
+d <- readr::read_csv("../data/EDC_clean2.csv",na = c("-99","-88","-77","")) %>% as.data.frame()
+#Now fix up variable names to make it easier to calculate alpha/means later on
+  # Substitute "_"" for "Q"" in column names
+colnames(d) <- gsub("Q","_",colnames(d))
+  # Fix variable with Q in its name
+colnames(d) <- gsub("_uestPack","QuestPack",colnames(d))
+  #for variables with no Q, add in a _ so the myalpha function below works for all variables 
+  #and then add in a "_" for the three manipulation check items (P24)
+colnames(d) <- gsub("P14","P14_",colnames(d)) #for P14
+colnames(d) <- gsub("P17","P17_",colnames(d)) #for P17
+colnames(d) <- gsub("P18","P18_",colnames(d)) #for P18
+colnames(d) <- gsub("P20","P20_",colnames(d)) #for P20
+colnames(d) <- gsub("P21","P21_",colnames(d)) #for P21
+colnames(d) <- gsub("P22","P22_",colnames(d)) #for P22
+colnames(d) <- gsub("P23","P23_",colnames(d)) #for P23
+  #change var names for 3 manip check items of interest
+names(d)[names(d)=="P24MoreNeg"] <- "P24_MoreNeg"
+names(d)[names(d)=="P24Serious"] <- "P24_Serious"
+names(d)[names(d)=="P24Concerned"] <- "P24_Concerned"
+
+glimpse(d) #allows you to take a glimpse at your data set
+```
+
+
+
+```{r setup2 which partner to select, include=FALSE}
+# Which member of each couple to pick? 
+# In experimental couples always want partner for whom QuestPack = 1
+# In control couples want to randomly select one partner, keeping gender balance equal
+# Code written by Prof. Joel Schneider in October 2016
+set.seed(16)
+SelectID <- d %>% select(CoupleID, PartID, QuestPack, Gender) %>% 
+  gather("k","v", -CoupleID,-Gender) %>% 
+  unite(k , k, Gender) %>% 
+  spread(k,v) %>% 
+  mutate(randPick = sample(1:2,n(),replace = T)) %>% 
+  mutate(Pick = ifelse(QuestPack_1 == 2,
+                       1, 
+                       ifelse(QuestPack_2 == 2, 
+                              2, randPick))) %>% 
+  mutate(PartID = ifelse(Pick == 2,PartID_1,PartID_2)) %$% PartID
+
+# Filter selected partner
+fd <- d %>% filter(PartID %in% SelectID) #use dataset fd for replication analyses
+
+```
+
+
+
+```{r setup3, include=FALSE}
+#recoding categorical variables 
+  #Condtion to cond, as factor; useful for plotting interation below
+fd$Condition <- as.factor(fd$Condition)
+fd$Cond <- revalue(fd$Condition, c("1"="-1", "2"="1")) #-1 = control, 1 = experimental
+  #Condition to dCond, as numeric; useful to include in correlation matrices
+fd$dCond <- as.numeric(fd$Condition) - 1 #dummy codes: control = 0, experimental = 1
+
+  #gender to sex, as factor
+fd$Gender <- as.factor(fd$Gender)
+fd$Sex <- revalue(fd$Gender, c("1"="-1", "2"="1")) #-1 = male, 1 = female
+  #gender to dsex, as numeric
+fd$dSex <- as.numeric(fd$Gender) - 1 #dummy codes: male = 0, female = 1
+
+fd$Cond <- ifelse(fd$Cond == -1, "Control", "Experimental") # put value labels to dichotomous variables
+fd$Sex <- ifelse(fd$Sex == -1, "Male", "Female") 
+
+#calculating relationship length
+fd$TotalMonths <- (fd$RelLengthYears*12)+fd$RelLengthMonths
+
+glimpse(fd)
+```
+
+
+
+```{r estimate alpha and create scale scores, include=FALSE}
+
+#Calculate alpha and also add mean score to data frame
+#Function written by Prof. Joel Schneider, October 2016
+
+#fd <- filter(fd, PartID != "321FA", PartID != "335FA") #two participants that expressed suspicion; results do not change;remove the "#" at the beginning of this line to run analyses with them removed
+myalpha <- function(vn, fd, omega = FALSE) {
+  dv <- fd  %>% select(contains(vn))
+  keys <- suppressWarnings(
+    data.frame(keys = dv %>%
+                 alpha(check.keys = TRUE) %$% keys,
+               row.names = colnames(dv)))
+  alphaObj <- scoreItems(keys = as.data.frame(keys), items = dv, missing = TRUE, impute = "none")
+  keys <- keys$keys
+  names(keys) <- colnames(dv)
+  print(keys)
+  print(alphaObj$alpha)
+  if (omega) print(paste0("Omega = ", omega(dv) %$% omega.tot))
+  return(alphaObj$scores)
+}
+
+#vn = variable name, d = name of data set, "omega = FALSE" is there to give the option to calculate omega if you like (but set by default to = false)
+
+#create means of all variables and place in data set 
+fd$SelfEsteem <- myalpha(vn = "P03_", fd = fd) #create variable called SelfEsteem in data set fd that is the mean of all P03 items
+fd$Satisfaction <- myalpha("P05_",fd) #mean comes from return portion of the function, specifically the "scores"
+fd$UncondRegard <- myalpha("P07_",fd)
+fd$SecureBase <- myalpha("P08_",fd)
+fd$IdealbyPart <- myalpha("P09_",fd)
+fd$PartGlobalEval <- myalpha("P10_",fd)
+fd$PercPartCom <- myalpha("P11_",fd)
+fd$ProjectionsPartBeh <- myalpha("P12_",fd)
+fd$P13Mean <- myalpha("P13_",fd) #scale not used in original analyses
+fd$PercPartTraits <- myalpha("P14_",fd)
+fd$Closeness <- myalpha("P16_",fd)
+fd$Mood <- myalpha("P17_",fd)
+fd$StateSE <- myalpha("P18_",fd)
+fd$PercPartAlts <- myalpha("P19_",fd)
+fd$PartForgiveSelfa <- myalpha("P20_",fd)
+fd$PartForgiveSelfb <- myalpha("P21_",fd)
+fd$WillingForgiveParta <- myalpha("P22_",fd)
+fd$WillingForgivePartb <- myalpha("P23_",fd)
+fd$ManipCheck <- myalpha("P24_",fd)
+names(fd)[names(fd)=="P15InOthrSelf"] <- "IOS" #a way to change variable names after the fact
+
+# standardize scale scores for items to be used to create composite DVs, as done in original study
+attach(fd)
+fd$zDV1_a <- scale(PartForgiveSelfa, center = TRUE, scale = TRUE)
+fd$zDV1_b <- scale(PartForgiveSelfb, center = TRUE, scale = TRUE)
+fd$zDV1_c <- scale(UncondRegard, center = TRUE, scale = TRUE)
+fd$zDV1_d <- scale(SecureBase, center = TRUE, scale = TRUE)
+fd$zDV1_e <- scale(IdealbyPart, center = TRUE, scale = TRUE)
+fd$zDV1_f <- scale(PartGlobalEval, center = TRUE, scale = TRUE)
+fd$zDV1_g <- scale(PercPartCom, center = TRUE, scale = TRUE)
+
+fd$zDV2_a <- scale(ProjectionsPartBeh, center = TRUE, scale = TRUE)
+fd$zDV2_b <- scale(PercPartTraits, center = TRUE, scale = TRUE)
+fd$zDV2_c <- scale(WillingForgiveParta, center = TRUE, scale = TRUE)
+fd$zDV2_d <- scale(WillingForgivePartb, center = TRUE, scale = TRUE)
+fd$zDV2_e <- scale(PercPartAlts, center = TRUE, scale = TRUE)
+
+fd$zDV3_a <- scale(IOS, center = TRUE, scale = TRUE)
+fd$zDV3_b <- scale(Closeness, center = TRUE, scale = TRUE)
+  #reverse code self-esteem and State Self-Esteem so high scores = high self-esteem; & mood so high scores = pos mood
+fd$rSelfEsteem = 8-SelfEsteem
+fd$rStateSE = 8-StateSE
+fd$rMood = 8-Mood
+detach(fd)
+  #mean center rSelfEsteem for analyses
+fd$cSelfEsteem <- scale(fd$rSelfEsteem, center = TRUE, scale = FALSE)
+
+    #make 3 DVs from standardized scores and put scores in dataset
+fd$zPercAccept <- myalpha("zDV1_",fd)
+fd$zPartnerEnh <- myalpha("zDV2_",fd)
+fd$zCloseness <- myalpha("zDV3_",fd)
+
+  #3reverse code zPartnerEnh so high scores equal positive evaluations
+fd$rzPartnerEnh = fd$zPartnerEnh*-1
+```
+
+
+```{r create data files with primary variables for assessing correlations and running models, echo=TRUE}
+ #now place select vars in new data object to reduce number of vars; needs dplyr
+#first numeric variables to obtain correlations
+newdata <- select(fd, cSelfEsteem, Satisfaction, dCond, ManipCheck, P24NumNeg, zPercAccept, rzPartnerEnh, zCloseness, rStateSE, rMood, dSex, TotalMonths, Age)
+sapply(newdata, function(x) sum(complete.cases(x))) #way to obtain N per column, or variable, id data set
+
+#now include condition and gender variables as factors as well for graphing purposes
+newdata2 <- select(fd, ManipCheck, cSelfEsteem, Satisfaction, rMood, zPercAccept, rzPartnerEnh, zCloseness, rStateSE, dCond, dSex, Cond, Gender, P24NumNeg, Wait) 
+table(newdata2$dCond) # way to obtain overall N per condition
+
+newdata3 <- na.omit(newdata2) #remove missing values for analyses with P24numNeg later on
+
+library(corrplot) #to create fancy plot of correlations
+library(pastecs) #use to obtain basic information on study variables such as mean, sd, etc
+options(scipen=100)
+stat.desc(newdata)
+
+#frequencies of some demographic variables
+Livewithpart.freq = table(fd$LiveWPart)
+Livewithpart.freq #living with partner?
+gender.freq = table(fd$Sex)
+gender.freq #gender balance in sample
+relstatus.freq = table(fd$RelStat)
+relstatus.freq #relatship status indicated
+cond.freq = table(fd$Cond)
+cond.freq #n per condition
+
+corr.test(newdata, y = NULL, use = "pairwise",method="pearson",adjust="holm",alpha=.05) #create correlation matrix with p values
+Cors <- cor(na.omit(newdata)) #create correlation matrix and save as "Cors"
+corrplot(Cors, method = "number") #use "Cors" to create plot
+
+newdata2 %>% #obtain means and sd for ManipCheck variables
+  group_by(Cond) %>% 
+  summarise (mean_manipcheck = mean(ManipCheck), sd_manipcheck = sd(ManipCheck), meanNum = mean(P24NumNeg, na.rm = TRUE),      sdNum = sd(P24NumNeg, na.rm = TRUE), mean_wait = mean(Wait, na.rm = TRUE), sdwait = sd(Wait, na.rm = TRUE))
+
+w <- aggregate(ManipCheck ~ dCond, data = newdata2, mean) #another way to obtain stats by grouping variable
+w
+
+t.test(newdata2$ManipCheck~newdata2$Cond) #t test for difference in ManipCheck between conditions
+t.test(newdata2$P24NumNeg~newdata2$Cond) #t test for differences in guessed number of negative things partner listed
+
+library(compute.es) #load library for computing effect sizes
+#mean1, mean2, sd1, sd2, n1, n2
+#1= experimental; 2= control
+mes(4.83, 4.24, 1.25, 1.42, 100, 102) #effect size calculator for ManipCheck
+mes(5.07, 3.43, 3.4, 1.65, 100, 102) #effect size calculator for P24NumNeg
+mes(73.97, 15.05, 77.57, 36.67, 73, 83) #effect size calculator for Wait
+
+glimpse(newdata2) #see your data set; check to make sure var names changed and new vars added
+```
+
+
+```{r regression model testing interaction effect, echo=TRUE}
+
+library(ggplot2) #package for plotting interaction
+library(lm.beta) #to obtain standardized coefficients from an lm object
+library(reghelper) #to obtain a "betta" beta (developed by Jeff Hughes; https://github.com/jeff-hughes/reghelper)
+
+#regression models
+#centered self esteem, dummy coded condition, and the interaction predicting outcomes (as in original analyses)
+  #Manipulation Check items
+m1 <- lm(ManipCheck~cSelfEsteem * dCond, data = newdata2) #DV = Manipulation Check
+summary(m1)
+lm.beta(m1)  #to obtain standardized coefficients (as reported in original paper)
+beta(m1) #the "betta" beta (using reghelper package)
+confint(m1) #to obtain 95% confidence intervals for model parameters
+m2 <- lm(P24NumNeg~cSelfEsteem * dCond, data = newdata3) #DV = NumNeg
+summary(m2) #using newdata3 because of missing values in this variable
+lm.beta(m2)
+beta(m2)
+confint(m2)
+  #Three primary DVs
+m3 <- lm(zPercAccept~cSelfEsteem * dCond, data = newdata2) #DV = Perceived Acceptance
+summary(m3)
+lm.beta(m3)
+beta(m3)
+confint(m3)
+m4 <- lm(rzPartnerEnh~cSelfEsteem * dCond, data = newdata2) #DV = Partner Enhancement
+summary(m4)
+lm.beta(m4)
+beta(m4)
+confint(m4)
+m5 <- lm(zCloseness~cSelfEsteem * dCond, data = newdata2) #DV = Closeness
+summary(m5)
+lm.beta(m5)
+beta(m5)
+confint(m5)
+  #State Self Esteem
+m6 <- lm(rStateSE~cSelfEsteem * dCond, data = newdata2) #DV = State Self Esteem
+summary(m6)
+lm.beta(m6)
+beta(m6)
+confint(m6)
+  #Mood (secondary analysis in original paper)
+m7 <- lm(rMood~cSelfEsteem * dCond, data = newdata2) #DV = Mood (not a primary analysis)
+summary(m7)
+lm.beta(m7)
+beta(m7)
+confint(m7)
+
+mt1 <- tidy(m1)  #different way to view model outcomes
+mt1
+mt2 <- tidy(m2) 
+mt2
+mt3 <- tidy(m3)
+mt3
+mt4 <- tidy(m4)
+mt4
+mt5 <- tidy(m5)
+mt5
+mt6 <- tidy(m6)
+mt6
+mt7 <- tidy(m7)
+m7
+
+mg1 <- glance(m1)  #different way to view model outcomes
+mg1 
+
+
+par(mfrow=c(2,2)) #checking assumptions Radziwill (2015), pp. 436-437
+plot(m1)
+```
+
+
+```{r plotting interactions, echo=TRUE}
+
+#Plotting interaction
+
+  #Using ggplot2 
+  #code from https://sakaluk.wordpress.com/2015/08/27/6-make-it-pretty-plotting-2-way-interactions-with-ggplot2/#catcont
+
+newdata2$predicted1=predict(m1) #put predicted scores into the data set so they can be used below
+newdata3$predicted2=predict(m2) #using newdata3 because of missing values in this variable
+newdata2$predicted3=predict(m3)
+newdata2$predicted4=predict(m4)
+newdata2$predicted5=predict(m5)
+newdata2$predicted6=predict(m6)
+
+
+  #set up APA theme for figure
+apatheme=theme_bw()+
+  theme(panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.border=element_blank(),
+        axis.line.x=element_line(color="black"),
+        axis.line.y=element_line(color="black"),
+        text=element_text(family='Times'))
+  
+  #make plots
+  #model 1
+p1=ggplot(newdata2, aes(x=cSelfEsteem, y=ManipCheck, shape=Cond))+
+geom_point()+
+scale_shape_manual(values=c(1,16), name='Condition', labels=c('Control','Experimental'))+
+geom_line(aes(x = cSelfEsteem, y = predicted1, linetype=Cond)) +
+scale_linetype_discrete(name='Condition', labels=c('Control','Experimental'))+
+labs(x = 'Self Esteem', y = 'Scores on Manipulation Check Index')+
+  apatheme
+p1
+ggsave('../results/fig1.png', p1)
+
+  #model 2
+p2=ggplot(newdata3, aes(x=cSelfEsteem, y=P24NumNeg, shape=Cond))+
+geom_point()+
+scale_shape_manual(values=c(1,16), name='Condition', labels=c('Control','Experimental'))+
+geom_line(aes(x = cSelfEsteem, y = predicted2, linetype=Cond)) +
+scale_linetype_discrete(name='Condition', labels=c('Control','Experimental'))+
+labs(x = 'Self Esteem', y = 'Number of Inferred Negative Things Written by Partner')+
+  apatheme
+p2
+ggsave('../results/fig2.png', p2)
+
+  #model 3
+p3=ggplot(newdata2, aes(x=cSelfEsteem, y=zPercAccept, shape=Cond))+
+geom_point()+
+scale_shape_manual(values=c(1,16), name='Condition', labels=c('Control','Experimental'))+
+geom_line(aes(x = cSelfEsteem, y = predicted3, linetype=Cond)) +
+scale_linetype_discrete(name='Condition', labels=c('Control','Experimental'))+
+labs(x = 'Self Esteem', y = 'Standardized Scores on Perceived Acceptance Index')+
+  apatheme
+p3
+ggsave('../results/fig3.png', p3)
+
+  #model 4
+p4=ggplot(newdata2, aes(x=cSelfEsteem, y=rzPartnerEnh, shape=Cond))+
+geom_point()+
+scale_shape_manual(values=c(1,16), name='Condition', labels=c('Control','Experimental'))+
+geom_line(aes(x = cSelfEsteem, y = predicted4, linetype=Cond)) +
+scale_linetype_discrete(name='Condition', labels=c('Control','Experimental'))+
+labs(x = 'Self Esteem', y = 'Standardized Scores on Partner Enhancement Index')+
+  apatheme
+p4
+ggsave("../results/fig4.png", p4, width = 20, height = 12, units = "cm")
+
+  #model 5
+p5=ggplot(newdata2, aes(x=cSelfEsteem, y=zCloseness, shape=Cond))+
+geom_point()+
+scale_shape_manual(values=c(1,16), name='Condition', labels=c('Control','Experimental'))+
+geom_line(aes(x = cSelfEsteem, y = predicted5, linetype=Cond)) +
+scale_linetype_discrete(name='Condition', labels=c('Control','Experimental'))+
+labs(x = 'Self Esteem', y = 'Standardized Scores on Closeness Index')+
+  apatheme
+p5
+ggsave('../results/fig5.png', p5)
+
+  #model 6
+p6=ggplot(newdata2, aes(x=cSelfEsteem, y=rStateSE, shape=Cond))+
+geom_point()+
+scale_shape_manual(values=c(1,16), name='Condition', labels=c('Control','Experimental'))+
+geom_line(aes(x = cSelfEsteem, y = predicted6, linetype=Cond)) +
+scale_linetype_discrete(name='Condition', labels=c('Control','Experimental'))+
+labs(x = 'Self Esteem', y = 'Scores on State Self Esteem')+
+  apatheme
+p6
+ggsave('../results/fig6.png', p6)
+```

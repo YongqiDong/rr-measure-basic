@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1584478864713.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2999487944",
+    "id" : "4FA45916",
+    "lastKnownWriteTime" : 1584478699,
+    "last_content_update" : 1584478699,
+    "path" : "~/capsule/code/R/assign_aoi.R",
+    "project_path" : "R/assign_aoi.R",
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -1,0 +1,18 @@
+metadata_version: 1
+name: Diagnosis of epilepsy based on EEG
+description: A New Feature Expansion Technique Combined with Shunt Gated Recurrent
+  Unit Neural Network for Epileptic Seizure Diagnosis
+tags:
+- Epileptic Seizure Diagnosis
+- Neural network
+- Feature Expansion Technique
+authors:
+- name: Baoyou Zheng
+  affiliations:
+  - name: Dalian maritime university
+- name: 'Zhiping Wang  '
+  affiliations:
+  - name: Dalian maritime university
+corresponding_contributor:
+  name: Baoyou Zheng
+  email: 17824833955@163.com

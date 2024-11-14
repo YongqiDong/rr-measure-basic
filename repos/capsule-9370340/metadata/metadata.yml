@@ -1,0 +1,16 @@
+metadata_version: 1
+name: Replication files for Neurons Learn by Predicting Future Activity
+description: This capsule contains the code for "Neurons learn by predicting future activity"  to reproduce the learning curves Figure 2-E (In this capsule, we set up maximum epoch = 3, because we would like to show that the network learns properly even with a small number of epochs ).
+authors:
+- name: Artur Luczak
+  affiliations:
+  - name: University of Lethbridge
+- name: Bruce L. McNaughton
+  affiliations:
+  - name: University of Lethbridge
+- name: Yoshimasa Kubo
+  affiliations:
+  - name: University of Lethbridge
+corresponding_contributor:
+  name: Artur Luczak
+  email: luczak@uleth.ca

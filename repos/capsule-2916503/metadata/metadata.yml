@@ -1,0 +1,10 @@
+metadata_version: 1
+name: Example of compute capsule for the book chapter "Developing and Disseminating
+  Data Analysis Tools for Open Science"
+description: This is an example compute capsule of the book chapter "Developing and
+  Disseminating Data Analysis Tools for Open Science" in L. Plonsky (Ed.), Open Science
+  in Applied Linguistics.
+authors:
+- name: Atsushi Mizumoto
+  affiliations:
+  - name: Kansai University (Japan)

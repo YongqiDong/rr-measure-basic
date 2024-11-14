@@ -1,0 +1,2 @@
+# Execution instructions.
+ Please click on the jupyter icon on the right side of the interface to log in to the Jupyter Cloud Workstation to run the model code. The `GC-diagnosis-model` related to  `code/GC-diagnois-model/run.ipynb` and The `GC-prognosis-model` related to `code/GC-prognosis/run.ipynb`.

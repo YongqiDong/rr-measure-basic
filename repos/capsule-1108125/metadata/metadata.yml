@@ -1,0 +1,35 @@
+metadata_version: 1
+name: 'Effectiveness and equity of Payments for Ecosystem Services: Real-effort experiments
+  with Vietnamese land users'
+description: |-
+  The capsule contains all data, analysis and results for the research article "Effectiveness and equity of Payments for Ecosystem Services:  Real-effort experiments with Vietnamese land users".
+
+  Abstract:
+
+  Payments for Ecosystem Services (PES) are widespread in conservation policy. In PES, environmental effectiveness and social equity are often perceived as conflicting goals. Empirical studies on the relationship between popular design features, such as payment differentiation and payment conditionality, and effectiveness and equity are scarce. Further, they struggle with measuring and separating ecological and equity outcomes. In this study, we combine two incentivized lab-in-the-field experiments with 259 land users from eight villages in North-Western Vietnam to assess both individual conservation effort and community-level equity perceptions under four different PES designs. Effort is measured in a real-effort task with real-world environmental benefits; equity perceptions about payment designs in the real-effort task are measured in a coordination game. We demonstrate that payment design affects both effort and equity perceptions. Payments which are differentiated and are solely conditional on individuals’ contributions of effort are perceived as most equitable. They are also more effective in motivating conservation effort than other designs, although the differences are small and not significant for all comparisons. By working out the positive correlation of effectiveness and equity across the four payment schemes, we show that these objectives are not necessarily conflicting goals in incentive-based conservation policy. Further, we can show that women exert greater conservation efforts. We discuss how greater equity and effectiveness could be achieved with reforms towards more input-based distribution criteria in Vietnam’s PES legislation and the limitations and opportunities of the experimental paradigm for research on PES.
+tags:
+- social-justice
+- fairness
+- experimental-economics
+- policy-instruments
+- lab-in-the-field-experiments
+- forest-conservation
+- social-norms
+- coordination
+- south-east-asia
+authors:
+- name: Lasse Loft
+  affiliations:
+  - name: Leibniz Centre for Agricultural Landscape Research
+- name: Stefan Gehrig
+  affiliations:
+  - name: Independent Researcher
+- name: Dung Ngoc Le
+  affiliations:
+  - name: Center for International Forestry Research (CIFOR)
+- name: Jens Rommel
+  affiliations:
+  - name: Swedish University of Agricultural Sciences
+corresponding_contributor:
+  name: Stefan Gehrig
+  email: stefan-gehrig@t-online.de

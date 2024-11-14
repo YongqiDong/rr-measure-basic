@@ -1,0 +1,552 @@
+---
+title: "The Subconscious Effect of Subtle Media Bias on Perceptions of Terrorism"
+author: "Replication File"
+date: "October 19, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      include = TRUE,
+                      #tidy = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      error = FALSE)
+```
+
+# Loading Data
+
+These analyses were conducted using R 3.5.2. To run the analyses, you must load the data `mediabias_analysisdata.csv`, as shown below.
+
+```{r dataload}
+## If you do not have packages, use install.packages()
+library(foreign)
+library(cobalt)
+library(cregg)
+library(cjoint)
+library(qwraps2)
+
+## load data
+med2 <- read.csv("/data/mediabias_analysisdata.csv", header = T, stringsAsFactors = T)
+```
+
+The next section prepares the data and reshapes it from respondent-wide to respondent-task long format.
+
+```{r reshape}
+
+## create new variable indicating word choice
+wording <- factor(x = c(1,2), labels = c("Neutral", "Negative"))
+
+
+## assign word choice to corresponding element in the data
+med2$word1A <- wording[1] # "Neutral"
+med2$word1B <- wording[2] # "Negative"
+med2$word2A <- wording[2] # "Negative"
+med2$word2B <- wording[1] # "Neutral"
+med2$word3A <- wording[1] # "Neutral"
+med2$word3B <- wording[1] # "Neutral"
+
+med2$word4A <- wording[1] # "Neutral"
+med2$word4B <- wording[2] # "Negative"
+med2$word5A <- wording[2] # "Negative"
+med2$word5B <- wording[1] # "Neutral"
+med2$word6A <- wording[2] # "Negative"
+med2$word6B <- wording[2] # "Negative"
+
+
+## reshape from respondent-wide to respondent-task-long
+medialong <-  reshape(med2, 
+                      idvar = "ResponseId", 
+                      varying = list(c("loc1A", "loc1B", "loc2A", "loc2B", "loc3A", "loc3B",
+                                       "loc4A", "loc4B", "loc5A", "loc5B", "loc6A", "loc6B"),
+                                     c("lab1A", "lab1B", "lab2A", "lab2B", "lab3A", "lab3B",
+                                       "lab4A", "lab4B", "lab5A", "lab5B", "lab6A", "lab6B"),
+                                     c("sev1A", "sev1B", "sev2A", "sev2B", "sev3A", "sev3B",
+                                       "sev4A", "sev4B", "sev5A", "sev5B", "sev6A", "sev6B"),
+                                     c("type1A", "type1B", "type2A", "type2B", "type3A", "type3B",
+                                       "type4A", "type4B", "type5A", "type5B", "type6A", "type6B"),
+                                     c("word1A", "word1B", "word2A", "word2B", "word3A", "word3B",
+                                       "word4A", "word4B", "word5A", "word5B", "word6A", "word6B"),
+                                     c("choice1", "choice1", "choice2", "choice2", "choice3", "choice3",
+                                       "choice4", "choice4", "choice5", "choice5", "choice6", "choice6"),
+                                     c("rate1_1", "rate1_2", "rate2_1", "rate2_2", "rate3_1", "rate3_2",
+                                       "rate4_1", "rate4_2", "rate5_1", "rate5_2", "rate6_1", "rate6_2"),
+                                     c("credib1", "credib1", "credib2", "credib2", "credib3", "credib3",
+                                       "credib4", "credib4", "credib5", "credib5", "credib6", "credib6")),
+                      # repeat every outcome twice because there are two observations for each choice outcome
+                      v.names = c("Location",
+                                  "Label",
+                                  "Severity",
+                                  "Type",
+                                  "Wording",
+                                  "Chosen",
+                                  "Rating",
+                                  "Credib"),
+                      times = c(1, 1, 2, 2, 3, 3, 1, 1, 2, 2, 3, 3),
+                      # repeat (1,2,3) because there are two groups
+                      direction = "long") 
+
+## reorder columns so that the "time" var is second for better overview
+names(medialong)
+medord <- medialong[, c(1, 19, 2:18, 20:length(names(medialong)))]
+
+## rename "time" var to "contest_no" (contest number)
+names(medord)[2] <- "contest_no"
+
+## order / cluster by responseID
+medord <- medord[order(medord$ResponseId),]
+
+## drop unused factor levels
+medord <- droplevels(medord)
+
+
+## recode factors and baseline levels
+medord$Location <- relevel(medord$Location, "Baghdad, Iraq")
+
+## now we should be good to go on all other variables
+## just recode them as necessary (baselines etc.)
+levels(medord$Label) <- c("Attackers", "Islamists", "Terrorists")
+medord$Label <- factor(medord$Label,
+                          levels = c("Attackers", "Terrorists", "Islamists"))
+
+
+levels(medord$Severity) <- c("High", "Middle", "Low")
+medord$Severity <- factor(medord$Severity,
+                          levels = c("Low", "Middle", "High"))
+
+levels(medord$Type) <- c("Vehicle", "Bombing", "Shooting")
+medord$Type <- factor(medord$Type,
+                      levels = c("Shooting", "Bombing", "Vehicle"))
+
+
+## delete the unnecessary rownames in the df
+rownames(medord) <- NULL
+
+## Delete rows with NAs on outcomes (eliminates unnecessary observations)
+medord <- medord[is.na(medord$Chosen) == F & is.na(medord$Rating) == F & is.na(medord$Credib) == F, ]
+
+## Also eliminate respondents with item non-response
+t <- sort(table(medord$ResponseId))
+medord <- medord[medord$ResponseId != "R_1LXuzDy2ElOPvIy",]
+medord$ResponseId <- as.character(medord$ResponseId)
+
+## attention check quota
+sum(medord$attention1 == 1) / nrow(medord) * 100 # 96%
+
+## number of repsondents who failed attention check
+sum(medord$attention1 != 1) / 6
+```
+
+This section prepares the outcome variables and covariates.
+
+```{r dataprep}
+
+## add additional variable "profile"
+medord$profile <- rep(c(1:2), nrow(medord)/2)
+
+## now recode chosen profile to binary indicator
+## i.e., which profile "won" in each choice task?
+medord$Chosen2 <- ifelse(medord$Chosen==1 & medord$profile == 1, 1,
+                         ifelse(medord$Chosen==2 & medord$profile == 2, 1,
+                                0))
+
+## recode Likert-scale rating variable to use as DV
+## re-scale rating to vary from 0 to 1 (i.e., standardize):
+
+medord$Rating <- as.numeric(as.character(medord$Rating))
+
+scale.01 <- function(x){
+  (x - min(x, na.rm =T)) /
+    (max(x, na.rm =T) - min(x, na.rm =T))
+}
+
+## call function on Rating var:
+medord$Rating2 <- scale.01(medord$Rating)
+
+## now also recode objective / credible profile to binary indicator
+medord$Credib2 <- ifelse(medord$Credib==1 & medord$profile == 1, 1,
+                         ifelse(medord$Credib==2 & medord$profile == 2, 1,
+                                0))
+
+## PREPARE COVARIATES
+
+## one respondent reported that he mistakenly put his age in as 4 rather than 44
+medord$age[medord$age==4] <- 44
+
+medord$party <- as.factor(medord$party)
+levels(medord$party) <- c("Rep", "Dem", "Ind", "Other")
+
+medord$gender <- as.factor(medord$gender)
+levels(medord$gender) <- c("Male", "Female")
+
+
+medord$relig <- as.factor(medord$relig)
+levels(medord$relig) <- c("Catholic", "Protestant", "Jewish", "Muslim", "Other",
+                          "Atheist", "Agnostic")
+
+medord$resid <- as.factor(medord$resid)
+levels(medord$resid) <- c("Rural", "Small town", "Not_Multicult", "Multicult")
+
+## now the data is prepared for analysis
+
+```
+
+# Analysis
+
+```{r analysis1}
+
+## There are six models in total:
+
+## Model 1: AMCEs w/ DV = threat binary
+## Model 2: AMCEs w/ DV = threat rating
+## Model 3: AMCEs + ACIE Wording*Label w/ DV = threat binary
+## Model 4: AMCEs + ACIE Wording*Label w/ DV = threat rating
+## Model 5: AMCEs w/ DV = credibility binary
+## Model 6: AMCEs + ACIE Wording*Label w/ DV = credibility binary
+## Plus additional subsets / baseline variations
+
+## Plots of models 1, 2 and 5 (i.e., those without interaction effects) are
+## reported in the body of the manuscript.
+
+## Figure 1 (top)
+model1 <- amce(Chosen2 ~ Wording + Label + Location + Severity + Type,
+               data = medord, cluster = T, respondent.id = "ResponseId",
+               design = "uniform")
+
+plot.amce(model1,
+          group.order = c("Wording", "Label", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+## Figure 1 (bottom)
+model2 <- amce(Rating2 ~ Wording + Label + Location + Severity + Type,
+               data = medord, cluster = T, respondent.id = "ResponseId",
+               design = "uniform")
+
+plot.amce(model2,
+          group.order = c("Wording", "Label", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Incident Rating (0 'not at all threatening' - 1 'very threatening')")
+
+```
+
+```{r analysis2}
+## Figure 2
+model5 <- amce(Credib2 ~ Wording + Label + Location + Severity + Type,
+               data = medord, cluster = T, respondent.id = "ResponseId",
+               design = "uniform")
+
+plot.amce(model5,
+          group.order = c("Wording", "Label", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)")
+```
+
+```{r analysis3}
+## Remaining models
+
+model3 <- amce(Chosen2 ~ Wording + Label + Location + Severity + Type +
+                 Wording*Label,
+               data = medord, cluster = T, respondent.id = "ResponseId",
+               design = "uniform")
+
+model4 <- amce(Rating2 ~ Wording + Label + Location + Severity + Type +
+                 Wording*Label,
+               data = medord, cluster = T, respondent.id = "ResponseId",
+               design = "uniform")
+
+model6 <- amce(Credib2 ~ Wording + Label + Location + Severity + Type +
+                 Wording*Label,
+               data = medord, cluster = T, respondent.id = "ResponseId",
+               design = "uniform")
+
+```
+
+
+# Supplementary Information
+
+The following sections show replication code for the Supplementary Information.
+
+## Analyzing subgroup effects
+
+```{r}
+
+## subset by Reps and Dems only (i.e. exclude Independents and "Others")
+
+repdem <- subset(medord,
+                 subset = medord$party=="Rep" | medord$party=="Dem")
+
+levels(repdem$party) <- c("Rep", "Dem", NA, NA)
+
+## estimate marginal mean (by party) for threat outcome
+
+threat_mm <- cj(data = repdem,
+                formula = Chosen2 ~ Wording + Label + Location + Severity + Type,
+                by = ~ party,
+                id = ~ ResponseId,
+                estimate = "mm")
+
+## estimate marginal mean (by party) for objectivity outcome
+
+object_mm <- cj(data = repdem,
+                formula = Credib2 ~ Wording + Label + Location + Severity + Type,
+                by = ~ party,
+                id = ~ ResponseId,
+                estimate = "mm")
+
+## Figure S1 in SI
+plot_MM <- plot(object_mm, group = "party", vline = .5, size = 2,
+                theme = ggplot2::theme_bw(),
+                legend_title = "Party",
+                xlim = c(0.3, 0.7),
+                xlab = "Marginal Mean (\"Objective Coverage\")")
+
+plot_MM + ggplot2::scale_color_manual(breaks = c("Dem", "Rep"), 
+                                      labels = c("Dem", "Rep"),
+                                      guide = ggplot2::guide_legend(title = "Party"),
+                                      values = c("darkgrey", "black"))
+```
+
+## Scrutinizing the impact of word choice
+
+```{r}
+## threat: exlude constant word choice (i.e. include only rounds 1+2)
+model3subs12 <- amce(Chosen2 ~ Wording + Label + Location + Severity + Type +
+                     Wording*Label,
+                   data = medord, cluster = T, respondent.id = "ResponseId",
+                   design = "uniform",
+                   subset = medord$contest_no==1 | medord$contest_no==2)
+
+## threat: focus on constant word choice (i.e. include only rounds 3)
+model3subs3 <- amce(Chosen2 ~ Wording + Label + Location + Severity + Type +
+                     Wording*Label,
+                   data = medord, cluster = T, respondent.id = "ResponseId",
+                   design = "uniform",
+                   subset = medord$contest_no==3)
+
+## objectivity: exlude constant word choice (i.e. include only rounds 1+2)
+model6subs12 <- amce(Credib2 ~ Wording + Label + Location + Severity + Type +
+                     Wording*Label,
+                   data = medord, cluster = T, respondent.id = "ResponseId",
+                   design = "uniform",
+                   subset = medord$contest_no==1 | medord$contest_no==2)
+
+## objectivity: focus on constant word choice (i.e. include only rounds 3)
+model6subs3 <- amce(Credib2 ~ Wording + Label + Location + Severity + Type +
+                     Wording*Label,
+                   data = medord, cluster = T, respondent.id = "ResponseId",
+                   design = "uniform",
+                   subset = medord$contest_no==3)
+```
+
+
+```{r}
+## Figure S2 in SI
+## Plot (a) [full sample on threat, see above]
+plot.amce(model3,
+          group.order = c("Wording", "Label", "Label:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+## Plot (b)
+plot.amce(model3subs12,
+          group.order = c("Wording", "Label", "Label:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+## Plot (c)
+plot.amce(model3subs3,
+          group.order = c("Wording", "Label", "Label:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+## Plot (d) [full sample on objectivity, see above]
+plot.amce(model6,
+          group.order = c("Wording", "Label", "Label:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)",
+          breaks = seq(-.4, .2, .1),
+          xlim = c(-.4, .2))
+
+## Plot (e)
+plot.amce(model6subs12,
+          group.order = c("Wording", "Label", "Label:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)",
+          breaks = seq(-.4, .2, .1),
+          xlim = c(-.4, .2))
+
+## Plot (f)
+plot.amce(model6subs3,
+          group.order = c("Wording", "Label", "Label:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)",
+          breaks = seq(-.4, .2, .1),
+          xlim = c(-.4, .2))
+```
+
+
+## Interactions of wording and labels
+
+```{r}
+## INTERACTION EFFECTS W/ DIFFERENT BASELINES -----------------------
+
+# 1) WORDING BASELINE:
+medord$Wording2 <- relevel(medord$Wording, "Negative")
+
+model3_a <- amce(Chosen2 ~ Wording2 + Label + Location + Severity + Type +
+                   Wording2*Label,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model3_a)
+
+plot.amce(model3_a,
+          group.order = c("Wording2", "Label", "Label:Wording2", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+model4_a <- amce(Rating2 ~ Wording2 + Label + Location + Severity + Type +
+                   Wording2*Label,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model4_a)
+
+plot.amce(model4_a,
+          group.order = c("Wording2", "Label", "Label:Wording2", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Incident Rating (0 'not at all threatening' - 1 'very threatening')")
+
+
+model6_a <- amce(Credib2 ~ Wording2 + Label + Location + Severity + Type +
+                   Wording2*Label,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model6_a)
+
+plot.amce(model6_a,
+          group.order = c("Wording2", "Label", "Label:Wording2", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)")
+
+# 2) LABEL BASELINE:
+medord$Label2 <- relevel(medord$Label, "Terrorists")
+
+model3_b <- amce(Chosen2 ~ Wording + Label2 + Location + Severity + Type +
+                   Wording*Label2,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model3_b)
+
+plot.amce(model3_b,
+          group.order = c("Wording", "Label2", "Label2:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+model4_b <- amce(Rating2 ~ Wording + Label2 + Location + Severity + Type +
+                   Wording*Label2,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model4_b)
+
+plot.amce(model4_b,
+          group.order = c("Wording", "Label2", "Label2:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Incident Rating (0 'not at all threatening' - 1 'very threatening')")
+
+
+model6_b <- amce(Credib2 ~ Wording + Label2 + Location + Severity + Type +
+                   Wording*Label2,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model6_b)
+
+plot.amce(model6_b,
+          group.order = c("Wording", "Label2", "Label2:Wording", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)")
+
+# 3) LABEL BASELINE AND WORDING BASELINE:
+model3_c <- amce(Chosen2 ~ Wording2 + Label2 + Location + Severity + Type +
+                   Wording2*Label2,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model3_c)
+
+plot.amce(model3_c,
+          group.order = c("Wording2", "Label2", "Label2:Wording2", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Threatening Incident)",
+          breaks = seq(-.1, .4, .1),
+          xlim = c(-.15, .4))
+
+model4_c <- amce(Rating2 ~ Wording2 + Label2 + Location + Severity + Type +
+                   Wording2*Label2,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model4_c)
+
+plot.amce(model4_c,
+          group.order = c("Wording2", "Label2", "Label2:Wording2", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Incident Rating (0 'not at all threatening' - 1 'very threatening')")
+
+
+model6_c <- amce(Credib2 ~ Wording2 + Label2 + Location + Severity + Type +
+                   Wording2*Label2,
+                 data = medord, cluster = T, respondent.id = "ResponseId",
+                 design = "uniform")
+summary(model6_c)
+
+plot.amce(model6_c,
+          group.order = c("Wording2", "Label2", "Label2:Wording2", "Location",
+                          "Severity", "Type"),
+          colors = "black",
+          xlab = "Change in Pr(Objective Coverage)")
+```
+
+## Summary table of sample demographics
+
+```{r}
+covs <- c("age", "ideol", "party", "gender", "educ", "relig", "resid")
+
+newsum <- qsummary(medord[,covs],
+                   numeric_summaries = list("Minimum" = "~ min(%s)",
+                                            "Median" = "~ median(%s)",
+                                            "Mean" = "~ mean(%s)",
+                                            "Maximum" = "~ max(%s)"),
+                   n_perc_args = list(digits = 1, show_symbol = FALSE)
+                   )
+
+# paste into LaTeX 
+summary_table(medord[,covs], newsum) 
+```
+

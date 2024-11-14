@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -ex
+
+# Change the dataset to choose whether train on 2D traffic or 3D skeleton prediction
+python train_2D3D.py --dataset 2D

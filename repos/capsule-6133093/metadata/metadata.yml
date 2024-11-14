@@ -1,0 +1,22 @@
+metadata_version: 1
+name: Replication Material for "The Subconscious Effect of Subtle Media Bias on Perceptions of Terrorism" appearing in American Politics Research (APR)
+description: Media outlets strategically frame news about violent events using sensationalist labels such as “terrorist” or “Islamist” but also more subtle wording choices that affect the overall article tone. We argue theoretically and show empirically using a conjoint experiment that, contrary to existing studies, the effect of these two framing devices on readers’ perceptions of terrorist events should be carefully separated. Even though article tone transports no factual information, in our experiment negative and sensational wording choices carried a greater impact on threat perceptions than the explicit “terrorist” and “Islamist” labels. In a realistic news article setting, which varied other salient context cues such as proximity or event size, subtle shifts in article tone still subconsciously influenced threat perceptions. This highlights the potential dangers of media coverage fueling otherwise unjustified fears by injecting unnecessary editorial tone.
+tags:
+- media bias
+- framing
+- labeling
+- public opinion
+- conjoint analysis
+authors:
+- name: Lukas Feick
+  affiliations:
+  - name: University of Konstanz
+- name: Karsten Donnay
+  affiliations:
+  - name: University of Zurich
+- name: Katherine T. McCabe
+  affiliations:
+  - name: Rutgers, The State University of New Jersey
+corresponding_contributor:
+  name: Karsten Donnay
+  email: donnay@ipz.uzh.ch

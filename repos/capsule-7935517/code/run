@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -ex
+
+
+# Compile pdf
+Rscript -e "library(knitr); setwd('Documents/Paper_main/'); knit(input = 'Paper_main.Rnw')"
+
+# Save tex results to results folder
+cp Documents/Paper_main/Paper_main.tex ../results/
+mkdir ../results/figure
+cp Documents/Paper_main/figure/*.pdf ../results//figure/
+mkdir ../results/screens
+cp Documents/Paper_main/screens/* ../results/screens/
+cp Documents/Paper_main/Paper_main.bib ../results/
+cp Documents/Paper_main/Paper_main.bbl ../results/

@@ -1,0 +1,12 @@
+metadata_version: 1
+name: 'VisGIN: Visibility Graph Neural Network on One-Dimensional Data for Biometric
+  Authentication'
+description: This repository includes the Python implementation of a biometric authentication
+  scheme using the proposed graph ML method.
+authors:
+- name: Hacı İsmail Aslan
+  affiliations:
+  - name: Gachon University
+corresponding_contributor:
+  name: Chang Choi
+  email: changchoi@gachon.ac.kr

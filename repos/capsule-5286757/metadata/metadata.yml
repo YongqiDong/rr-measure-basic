@@ -1,0 +1,16 @@
+metadata_version: 1
+name: PyTorch-based implementation of label-aware graph representation for multi-class trajectory prediction
+description: Trajectory Prediction under diverse patterns has attract increasing attentions in multiple real-world applications ranging from urban traffic analysis to human motion understanding, among which graph convolution network (GCN) is frequently adopted with its superior ability in modeling the complex trajectory interactions. In this work, we propose a python package by enhancing GCN with label information of the trajectory. This is done by integrating a label-embedded graph with the existing graph structure in the standard graph convolution layer. The flexibility and the portability of the package also allows researchers to employ it under more general multi-class sequential prediction tasks.
+tags:
+- Trajectory prediction
+- Graph convolution network
+- Multi-class prediction
+- Traffic analysis
+- Human motion understanding
+authors:
+- name: Qianhui Men
+  affiliations:
+  - name: City University of Hong Kong; University of Oxford
+- name: Hubert P. H. Shum
+  affiliations:
+  - name: Durham University

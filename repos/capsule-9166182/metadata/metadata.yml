@@ -1,0 +1,16 @@
+metadata_version: 1
+name: Synthetic Electrocardiogram Attack Method
+description: Synthetic Electrocardiogram Attack Method (SEAM) is an attack designed to compromise electrocardiogram based key agreement schemes for Body Area Networks (BAN)
+authors:
+- name: Jack Hodgkiss
+  affiliations:
+  - name: Manchester Metropolitan University
+- name: Soufiene Djahel
+  affiliations:
+  - name: Manchester Metropolitan University
+- name: Zonghua Zhang
+  affiliations:
+  - name: ' Huawei France Research Center, Huawei Technologies'
+corresponding_contributor:
+  name: Jack Hodgkiss
+  email: 14036299@stu.mmu.ac.uk

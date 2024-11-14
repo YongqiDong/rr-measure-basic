@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1614699850543.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "2DB6E4F1",
+    "lastKnownWriteTime" : 1614699827,
+    "last_content_update" : 1614699827,
+    "path" : "~/capsule/code/IAQ-PostCollection-Analysis.R",
+    "project_path" : "IAQ-PostCollection-Analysis.R",
+    "properties" : {
+        "cursorPosition" : "228,0",
+        "scrollLine" : "219"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

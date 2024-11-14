@@ -1,0 +1,38 @@
+metadata_version: 1
+name: Research Ethics Committees as an intervention point to promote a priori sample
+  size calculations
+description: Studies in the health and life sciences often use sample sizes too small
+  to robustly answer the research questions at hand. By performing a formal sample
+  size calculation before beginning a study, researchers can overcome this issue.
+  One potential avenue to promote the uptake of sample size calculation is through
+  Research Ethics Committees (RECs). We assessed template ethics submission forms
+  from 10 RECs from research-intensive universities in each of the United States and
+  the United Kingdom (for 20 forms in total). We found that 19 of them requested that
+  researchers provide the planned sample size, 12 requested a justification of the
+  sample size, and 6 requested a sample size calculation. Future research could investigate
+  the effectiveness of sample size requests from RECs and compare this approach to
+  intervening through other mechanisms, such as Scientific Review Committees or funding
+  agencies.
+tags:
+- meta-research
+- sample size calculation
+- power calculation
+- Research Ethics Committee
+- Institutional Review Board
+- reproducibility
+authors:
+- name: Robert Thibault
+  affiliations:
+  - name: Stanford University
+- name: Sofia Papalouka
+  affiliations:
+  - name: University of Bristol
+- name: Marton Kovacs
+  affiliations:
+  - name: ELTE Eotvos Lorand University
+- name: Marcus Munafò
+  affiliations:
+  - name: University of Bristol
+corresponding_contributor:
+  name: Robert Thibault
+  email: robert.thibault@stanford.edu

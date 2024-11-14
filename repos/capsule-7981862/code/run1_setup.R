@@ -1,0 +1,40 @@
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+## Code to install R packages and dependencies used by:
+## Zhukov, Byers, Davidson, and Kollman,
+## "Integrating Data Across Misaligned Spatial Units," 
+## Political Analysis (conditionally accepted 10/2022)
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+
+# Print upon starting
+print("**** Starting run1_setup.R ****")
+
+# Detach non-essential packages
+detachAllPackages <- function() {
+  basic.packages <- c("package:stats","package:graphics","package:grDevices","package:utils","package:datasets","package:methods","package:base")
+  package.list <- search()[ifelse(unlist(gregexpr("package:",search()))==1,TRUE,FALSE)]
+  package.list <- setdiff(package.list,basic.packages)
+  if (length(package.list)>0)  for (package in package.list) detach(package, character.only=TRUE)
+}
+detachAllPackages()
+rm(detachAllPackages)
+
+# Install & load packages needed for replication
+list.of.packages <- c("sf","gstat","mgcv","randomForest","xtable","spdep","spData","sp","parallel","rpart","nlme","spatstat","spatstat.linnet","spatstat.core","spatstat.random","spatstat.geom","spatstat.data","stringr","data.table","dplyr","raster","SUNGEO","Formula")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]; if(length(new.packages)){install.packages(new.packages,repos = "http://cran.us.r-project.org",dependencies=TRUE)}
+loaded.packages <- lapply(list.of.packages, require, character.only = TRUE)
+rm(list.of.packages,new.packages,loaded.packages)
+
+# Turn off s2 processing
+suppressMessages({
+  sf::sf_use_s2(FALSE)
+})
+
+# Print upon finishing
+print("**** Finished run1_setup.R ****")
+

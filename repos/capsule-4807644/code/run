@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -ex
+# this script will be executed for a reproducible run on the raw results 
+
+# analyse the raw data and create figures
+python3 -u data-analysis-viz.py 
+
+# analyse raw data and create tables for appendix
+python3 -u appendix.py 

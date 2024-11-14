@@ -1,0 +1,100 @@
+
+<!-- ## Practical Exercise II: Train a Random Forest and Estimate Predictive Performance -->
+
+In the next exercise, we show how to train and evaluate a RF model in mlr3.
+We use a classification problem in this exercise to demonstrate how classification is done in mlr3.
+However, the RF also works for regression problems, which we will demonstrate in the next module.
+To follow along, make sure to repeat the earlier code steps in which we loaded the PhoneStudy dataset.
+```{r, include=FALSE}
+# load the package
+library(mlr3verse)
+
+# load the data
+phonedata <- readRDS(file = "../../data/clusterdata.RDS")
+phonedata <- phonedata[complete.cases(phonedata$gender),]
+phonedata <- phonedata[, c(1:1821, 1823, 1837)]
+```
+
+```{r, include=FALSE}
+# default level: "info"
+lgr::get_logger("mlr3")$set_threshold("warn") # with this option we prevent long output
+```
+
+### Create a Classification Task
+
+First, we create an artificial classification example by binning the continuous *E2.Sociableness* variable into *high* and *low* sociability based on the median of the complete dataset.
+This is just to showcase how classification works in mlr3.
+We do not recommend binning in a real application, where we would always perform regression if the target is continuous [@Stachl2020ML].
+```{r}
+phonedata$E2.Sociableness_bin <- ifelse(
+  phonedata$E2.Sociableness >= median(phonedata$E2.Sociableness),
+  "high", "low")
+phonedata$E2.Sociableness_bin <- 
+  as.factor(phonedata$E2.Sociableness_bin)
+```
+We create a new supervised classification task based on the binned target, declaring *high* sociability as the so-called *positive* group.
+This arbitrary choice determines the interpretation of performance measures like $SENS$ and $SPEC$ (e.g., sensitivity is the ratio of individuals with high sociability that are correctly classified to have high sociability).
+We make sure to remove both the original continuous sociability variable and the gender variable from the feature set.
+```{r}
+task_Soci_bin <- as_task_classif(phonedata, 
+  id = "Sociability_Classif", target = "E2.Sociableness_bin", 
+  positive = "high")
+task_Soci_bin$set_col_roles("E2.Sociableness", remove_from = "feature")
+task_Soci_bin$set_col_roles("gender", remove_from = "feature")
+```
+In the following line, we specify our target as a so-called *stratification variable*.
+When we later split the task for CV, this will (roughly) keep the proportion of high and low sociability in each training set equal to the proportion in the complete dataset.
+Using *stratified resampling* for classification tasks is usually a good idea, because it improves the precision of performance estimates, especially for datasets with imbalanced classes or relatively few observations [@kohavi1995].
+```{r}
+task_Soci_bin$set_col_roles("E2.Sociableness_bin", add_to = "stratum")
+```
+
+### Train a Random Forest Model
+
+Next, we create a learner for the RF model, using the state-of-the-art implementation in the *ranger* package [@wright_ranger_2017].
+We can directly specify hyperparameter settings of the learner (e.g., the number of trees).
+To handle the missing data, we again fuse our learner with our imputation strategy and create a *GraphLearner*.
+Because the RF algorithms contains random steps (drawing bootstrap samples), we set a seed before training the learner on our classification task to make the results reproducible.
+```{r}
+imputer <- po("imputemedian")
+rf <- lrn("classif.ranger", num.trees = 500)
+rf <- as_learner(imputer %>>% rf)
+set.seed(1)
+rf$train(task_Soci_bin)
+```
+The trained model object produced by the ranger package could be extracted with `rf$model$classif.ranger$model`.
+Similar to Practical Exercise 1, it would be easy to use the trained model to compute predictions for new observations.  
+```{r}
+phonedata_new <- readRDS(file = "../../data/clusterdata.RDS")
+phonedata_new <- phonedata_new[
+  !complete.cases(phonedata_new$gender), c(1:1821, 1837)]
+rf$predict_newdata(newdata = phonedata_new)$response
+```
+
+As before, we could also calculate in-sample predictive performance by computing predictions for the same data used in training.
+Now that we have a classification task, the prediction object also contains a confusion matrix of our in-sample predictions.
+```{r}
+pred <- rf$predict(task_Soci_bin)
+pred$confusion
+```
+All observations from the training data have been classified without error.
+However, this estimate is probably not realistic for the predictive performance on new data.
+
+### Estimate Predictive Performance of the Model
+
+The following out-of-sample estimate exemplifies again that in-sample performance estimates should not be trusted, especially not for flexible ML models like RF.
+It is absolutely necessary to use resampling, here 10-fold CV with $MMCE$ as the performance measure:
+```{r}
+set.seed(3)
+res <- resample(task_Soci_bin, learner = rf, 
+  resampling = rsmp("cv", folds = 10))
+res$aggregate(list(msr("classif.ce"),
+  msr("classif.ce", id = "classif.ce.sd", aggregator = sd)))
+```
+CV reveals that the full model cannot be expected to perfectly predict new data, but will misclassify about `r round(res$aggregate(msr("classif.ce")), 2) * 100`% of all cases.
+Note that we computed both the already familiar *point estimate* of predictive performance (mean $MMCE$ across folds) and an estimate of the *variability* of performance estimates from different test sets (the code `msr("classif.ce", id = "classif.ce.sd", aggregator = sd)` constructs a performance measure that computes the standard deviation of $MMCE$ across folds).
+Documenting this variability is highly recommended to evaluate the precision of our performance estimate.
+A further step to increase our confidence in our performance estimate is to check whether the point estimate changes a lot when repeating the resampling with different seeds.
+Note that actively searching for a seed which produces a higher performance estimate is not meaningful and would bias the performance evaluation. 
+Instead, *repeated CV* should be used to get a stable performance estimate.
+We illustrate repeated CV and the variability of resampling estimates in ESM 3.5. 

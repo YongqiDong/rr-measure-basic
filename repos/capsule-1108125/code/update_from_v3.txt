@@ -1,0 +1,4 @@
+Changes
+
+- Removed redundant lines of code and unnecessary commands
+- Edited plot elements (resolution, labels, aspect ratio, ...) for Figure 4, 5, 6, S1, S2 and S3

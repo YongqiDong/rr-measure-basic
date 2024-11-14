@@ -1,0 +1,28 @@
+example_retro_r	
+data_plot_winner	data_plot1	des_fit
+Plot_winner	
+example_pro_r	
+Data_table_pro_r	data_table	power_list	rho_list
+Table_pro_r	
+Data_plot_scenarios	
+Plot_scenarios	add_lables	col1	col2	col3	data_conditions_plot	g	plot_fun	plot_list	plots	data_conditions
+Data_table_alpha	alpha_list	data_table2
+Table_alpha	
+Data_plot_hypothesis	
+Plot_hypothesis	data_hypothesis	legend	p	p1	p2
+example_pro_r2	
+Data_plot_sampling_rho	data_sampling_rho
+Plot_sampling_rho	
+Data_plot_cohen	
+Plot_cohen	data_cohen	legend	p_cohen	p1_cohen	p2_cohen
+Data_plot_rho	
+Plot_rho	data_conditions_rho	legend	p_rho	p1_rho	p2_rho
+intruction1	
+function_retro	
+function_pro	
+ex_figure1	
+ex_figure3	
+ex_figure6	
+ex_table1	
+ex_table2	
+Session Info	

@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1704879344863.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "30A5E67B",
+    "lastKnownWriteTime" : 1704879727,
+    "last_content_update" : 1704879727456,
+    "path" : "~/capsule/code/GC-prognosis-model/Rscript/model_prediction_performance.R",
+    "project_path" : "GC-prognosis-model/Rscript/model_prediction_performance.R",
+    "properties" : {
+        "cursorPosition" : "47,0",
+        "scrollLine" : "35"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

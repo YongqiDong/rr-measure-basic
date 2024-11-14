@@ -1,0 +1,120 @@
+
+<!-- Practical Exercise I: Performance Evaluation with K-fold Cross-Validation -->
+
+### Compute In-sample Performance Estimate
+In our first practical exercise, we will demonstrate how to use *mlr3* to fit a standard linear regression model to the *PhoneStudy* dataset by predicting the sociability personality trait score based on all variables of aggregated smartphone usage behavior.
+Then we compare in-sample and out-of-sample predictive performance based on $R^2$ and $RMSE$.
+We assume that readers are generally familiar with basic data analysis in R.
+To follow the tutorial, please install R ^[https://cran.r-project.org/. We used `r R.version.string`.] and download our materials from the *OSF repository* at <https://osf.io/9273g/>.
+If you open the *mlr3TutorialPaper.Rproj* file with the code editor *RStudio Desktop* ^[https://posit.co/download/rstudio-desktop/], you can follow the displayed instructions to automatically install all R packages in a local project library with the exact versions we used for this tutorial.^[This functionality uses the *renv* package [@R-renv], which is very useful for reproducible data analysis in R.]
+
+First, we load the *PhoneStudy* dataset and remove some administrative variables we do not use in our tutorial.
+We also remove 4 participants who did not report their gender.
+```{r, echo=TRUE}
+phonedata <- readRDS(file = "../../data/clusterdata.RDS")
+phonedata <- phonedata[complete.cases(phonedata$gender),]
+phonedata <- phonedata[, c(1:1821, 1823, 1837)]
+```
+We load the *mlr3verse* - R package [@R-mlr3verse], which conveniently loads mlr3 and the most important companion packages.
+Then we create a *task* object with a unique id (*Sociability_Regr*) which is mlr3's way to store the raw data along with some meta-information for modeling.
+In mlr3, a task defines a certain prediction problem, here supervised regression with the sociability trait score (named *E2.Sociableness* in our dataset) as the target.^[The *E2.Sociableness* variable is the estimated person parameter of a Partial Credit Model [@Masters1982] for the sociability facet of the personality trait extraversion in the BFSI. For details, see @Stachl2020.]
+```{r}
+library(mlr3verse)
+task_Soci <- as_task_regr(phonedata, id = "Sociability_Regr",
+  target = "E2.Sociableness")
+```
+The meta-data can be displayed by printing the task object (type `task_Soci`).
+When training a model on a task, mlr3 by default uses all variables except the target as features.
+We do not want to use *gender* as a feature although we want to check our models for *gender fairness* in a later module.
+Therefore we remove *gender* from the set of features but keep it within the task object.
+```{r}
+task_Soci$set_col_roles("gender", remove_from = "feature")
+```
+We recommend to always double check which variables are really intended to be used as features (you can get the full list of feature names with `task_Soci$col_roles$feature`), because including the wrong variables is a common source of embarrassing mistakes, which can completely invalidate the whole analysis.
+
+Next we create a *learner* object, to specify an ML model to apply later.
+mlr3 does not implement its own ML models but links to available implementations in other R packages.
+For example, the id *regr.lm* links to the ordinary `lm` function in the *stats* package.
+You can find a list of mlr3 ids for the most popular ML models in the mlr3 e-book [@mlr3book2022].
+```{r}
+lm <- lrn("regr.lm")
+```
+We try to *train* (i.e., estimate model parameters) the *learner* on the *task*.
+In mlr3, objects have "abilities" (also called methods) that can be applied with the following `$`-syntax (here the `train` method of the learner object is used to train the learner on a specified task). 
+```{r, error=TRUE}
+lm$train(task = task_Soci)
+```
+Unfortunately, this fails because there are missing values in the dataset and *regr.lm* cannot handle them.
+We will use *mlr3pipelines* [@binder2021] to build a simple analysis pipeline, called *GraphLearner* in mlr3 (a learner consisting of several consecutive analysis steps that can be visualized as a graph),  that automatically replaces missing values with the median of the respective training set (i.e., median imputation), prior to fitting our linear model.
+We do not recommend using mean or median imputation in real applications.^[In @Stachl2020, a more advanced analysis pipeline and imputation strategy was used compared to this tutorial. For a description, see the supplementary information for that paper.]
+A tutorial on how to build more complex analysis pipelines with the mlr3pipelines package can be found in the mlr3 e-book [@mlr3book2022].
+```{r}
+imputer <- po("imputemedian") # po defines a single pipeline operation
+lm <- as_learner(imputer %>>% lm) # combine po and learner into a pipeline
+```
+Now, training the augmented learner on the task works just fine.
+```{r}
+lm$train(task = task_Soci)
+```
+
+```{r, include=FALSE, eval=FALSE}
+# running the following code shows that the result of the train command is 
+# just an ordinary linear regression model based on the lm function in R
+summary(lm$model$regr.lm$model)
+```
+The previous line trained the model and automatically stored it inside the learner object.
+One great advantage of mlr3 is that we can use the same modeling functions for ML models from different R packages without having to remember the peculiarities of their modeling syntax.
+We can use the trained model to make *predictions* which we have to store in a separate object.^[R issues a warning that the predictions may be misleading, but they are computed nonetheless.]
+```{r, warning=FALSE}
+prediction <- lm$predict(task = task_Soci)
+```
+We just predicted the same data that we already used for model training, but we could also compute predictions for new observations.
+In the Sociability task, we did not include four individuals with missing values on the gender variable.
+Because we do not use gender as a feature here, we can treat these individuals as new data and predict their sociability score with `$predict_newdata()`.
+```{r, warning=FALSE}
+phonedata_new <- readRDS(file = "../../data/clusterdata.RDS")
+phonedata_new <- phonedata_new[
+  !complete.cases(phonedata_new$gender), c(1:1821, 1837)]
+lm$predict_newdata(newdata = phonedata_new)$response
+```
+With this functionality, it would be possible to use the model in a practical application.
+However, it would be irresponsible to apply any predictive model for which the expected predictive performance is unknown.
+Therefore, we now demonstrate how to evaluate predictive performance with mlr3.
+
+If we wanted to compute *in-sample performance* based on the predictions for all observations included in our task (which we stored in `prediction`), we could calculate the estimates with the `score` function and specify the performance measures we are interested in ($R^2$ and $RMSE$) with their respective id.
+For an exhaustive list of all performance measures available in mlr3, type `as.data.table(mlr_measures)` or checkout the mlr3 e-book [@mlr3book2022].
+```{r}
+mes <- msrs(c("regr.rsq", "regr.rmse"))
+prediction$score(mes)
+```
+The performance on the training data is almost perfect.
+$R^2$ is $1$ and the $RMSE$ is numerically indistinguishable from $0$ (see `all.equal(0, 2.68163e-11)`).
+We should always be skeptical when we observe very high in-sample performance, because this can be a sign that the model overfitted to the training data.
+In general, we should never trust in-sample performance but estimate out-of-sample performance instead.
+
+### Compute Out-of-sample Performance Estimate
+Next we want to use CV to compute an out-of-sample performance estimate.
+We specify a *resampling strategy* (here 5-fold CV).
+You can run `as.data.table(mlr_resamplings)` to get a table of available resampling strategies.
+```{r}
+rdesc <- rsmp("cv", folds = 5)
+```
+The `resample` function randomly splits our dataset based on our resample description, retrains our learner on each subset and computes predictions on each test set.
+Before running `resample`, we set an arbitrary seed to make our results reproducible.
+Next we compute the out-of-sample performance estimate for our preferred measures aggregated across our 5 test sets with `aggregate`.
+```{r, warning=FALSE, error=FALSE}
+set.seed(1)
+res <- resample(learner = lm, task = task_Soci, resampling = rdesc)
+res$aggregate(mes)
+```
+When we compare the out-of-sample to the in-sample estimates, we realize that the predictions of our model are expected to be really bad.
+This might be no surprise to many readers because we used ordinary linear regression with 620 observations and 1822 predictor variables, which results in an unidentified model.
+As a consequence, the $RMSE$ is huge: a typical deviation between true and predicted sociability scores is about 79, but the true sociability scores in the dataset range only from `r round(min(phonedata$E2.Sociableness), 2)` to `r round(max(phonedata$E2.Sociableness), 2)`.
+The negative $R^2$ also implies that the predictive model should not be used in practice.
+Remember that in contrast to the well known in-sample estimate for linear regression, out-of-sample $R^2$ can be negative.
+Negative $R^2$ indicates that the model performs worse than a simple baseline model that completely ignores all features and merely predicts the mean target value in the test data.
+The concrete values of negative $R^2$ do not have any intuitive interpretation.
+We give a better intuition on why $R^2$ can become negative in ESM 3.1.
+The important message here is that with a poorly designed ML model, it is easy to produce worse predictions compared to simple guessing.
+The naive notion that using any predictive model might still be better than using no formal predictions at all is *wrong*.
+However, estimating predictive performance with resampling can prevent us from applying inappropriate models in practice, without relying on expert knowledge about the specific model class (e.g., identification issues in linear regression).

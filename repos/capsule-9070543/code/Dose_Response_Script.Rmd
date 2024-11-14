@@ -1,0 +1,370 @@
+---
+title: "Figures 2 and 4 Dose Responses"
+output: html_document
+---
+
+This code generates the dose response curves in figures 2 and 4 of Stuart et al. 2018.
+
+Load libraries
+```{r setup, message = FALSE}
+library(dplyr)
+library(ggplot2)
+library(magrittr)
+library(tidyr)
+library(readr)
+```
+
+Define helper functions
+```{r helper functions}
+plot_facets = function(dose_data, xx, yy, group, label){
+ggplot(dose_data, aes_(x = as.name(xx), y = as.name(yy), group = as.name(group)))+
+  geom_smooth(method = 'loess', span = 0.5, se=TRUE)+
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1))+
+  scale_x_log10(labels = fancy_scientific)+
+  xlab(label)+
+  ylab("Normalized Cell Number")+
+  geom_point()+
+  theme_bw()+
+  facet_wrap(as.name(group))
+}
+p<-function(f,b) function(a) f(a,b)
+find_ic50 = function(y){
+  r<-vector("list",2)
+  r[[1]] = base::Position(p(`>=`, 0.5), y, right = TRUE)
+  r[[2]] = base::Find(p(`>=`,0.5), y, right = TRUE)
+  return(r)
+}
+source("./Helper_Functions/fancy_scientific.R")
+```
+
+# Mutants Dose Response to LGX818
+```{r LGX818}
+lgx_dose = read_csv("../data/lgx_mutant_dose_response.csv")
+lgx_dose = gather(lgx_dose, concentration, number, -c(sample, rep_number), convert = TRUE)
+factor_levels = as.list(1:7)
+names(factor_levels) = unique(lgx_dose$sample)
+lgx_dose$sample2 = factor(lgx_dose$sample, levels = unique(lgx_dose$sample))
+plot_facets(lgx_dose, "concentration", "number", "sample2", "LGX Concentration (nM)")
+ggsave("../results/Dose_Response_Script_Output/lgx_facet.eps", family = "Times")
+```
+
+### Figure 2 dose response LGX818
+```{r Fig 2 LGX818}
+agg_1 = aggregate(lgx_dose$number, by=list(sample2 = lgx_dose$sample2, concentration = lgx_dose$concentration), mean)
+agg_2= aggregate(lgx_dose$number, by=list(sample2 = lgx_dose$sample2, concentration = lgx_dose$concentration), sd)
+
+x_axis_labels = c(0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, "3,000", "10,000")
+
+point_data = data.frame(cbind(agg_1, agg_2$x))
+colnames(point_data)[3:4]=c("Mean", "SD")
+this_data = dplyr::bind_rows(point_data, lgx_dose)
+plot_data = bind_rows(point_data, lgx_dose)
+ggplot(plot_data, aes(x =concentration, y = Mean, ymin = (Mean-SD/2), ymax = (Mean+SD/2), group = sample2, color = sample2))+
+  geom_point(size = 2)+
+  geom_errorbar(width = .2)+
+  scale_x_log10(labels = c(0, x_axis_labels), breaks = c(0.01, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000), minor_breaks = NULL)+
+  annotation_logticks(sides = "b", mid = unit(0.1, "cm"))+
+  coord_cartesian(xlim = c(0.01, 10000))+
+  scale_y_continuous(breaks = c(0, .25, .5, .75, 1))+
+  geom_smooth(aes(x = concentration, y = number), method = 'loess', se=FALSE, span = 0.5)+
+  labs(color = "sample")+
+  xlab("LGX818 Concentration (nM)")+
+  ylab("Normalized Cell Number")+
+  scale_color_manual(values = c("#000000", "#ff0000", "#3690c0", "#228B22", "#00FFFF", "#FF6600", "#dd3497"))+
+  theme_bw()+
+  theme(text=element_text(size=14,  family="Times"), axis.text.x = element_text(hjust =1, angle = 45))
+ggsave("../results/Dose_Response_Script_Output/lgx_dose_responses.eps", family = "Times")
+```
+
+Estimate IC50s.
+```{r LGX IC50}
+fifty = vector("list", 7)
+index = 1
+for(ii in unique(lgx_dose$sample)){
+  data_subset = filter(lgx_dose, sample == ii)
+  fit_line = loess(data_subset$number~log10(data_subset$concentration), span = 0.5)
+  start = log10(1)
+  end = log10(10000)
+  diff = 100
+  while(diff >0.0001){
+    x = seq(start, end, length.out = 10000)
+    y = predict(fit_line, x)
+    r = find_ic50(y)
+    if(is.na(r[[1]])) break
+    start = x[r[[1]]]
+    end = x[r[[1]]+1]
+    diff = abs(r[[2]]-0.5)
+  }
+  if(!is.na(r[[1]])) fifty[[index]] = 10^c(x[r[[1]]], x[r[[1]]+1]) %>% mean
+  index = index + 1
+}
+names(fifty) = unique(lgx_dose$sample)
+fifty
+```
+
+Bootstrap 200 samples to get confidence intervals of IC50
+```{r LGX confidence interval}
+fifty_ci = vector("list", 7)
+confidence_interval = vector("list", 7)
+index = 1
+for(ii in unique(lgx_dose$sample)){
+  val_range = matrix(0, nrow =1, ncol = 200)
+  for(jj in 1:200){ii
+    data_subset = filter(lgx_dose, sample == ii)
+    by_conc = data_subset %>% group_by(concentration)
+    boot_data = sample_frac(by_conc, 1, replace = TRUE)
+    fit_line = loess(boot_data$number~log10(boot_data$concentration), span = 0.5)
+    start = log10(1)
+    end = log10(10000)
+    diff = 100
+    while(diff >0.0001){
+      x = seq(start, end, length.out = 10000)
+      y = predict(fit_line, x)
+      r = find_ic50(y)
+      if(is.na(r[[1]])) break
+      start = x[r[[1]]]
+      end = x[r[[1]]+1]
+      diff = abs(r[[2]]-0.5)
+    }
+    if(!is.na(r[[1]])) val_range[jj] = 10^c(x[r[[1]]], x[r[[1]]+1]) %>% mean
+    if(is.na(r[[1]])) break
+  }
+  fifty_ci[[index]] <- sort(val_range - fifty[[index]])
+  confidence_interval[[index]] = fifty[[index]] + fifty_ci[[index]][c(5,195)]
+  index = index + 1
+}
+names(confidence_interval) = unique(lgx_dose$sample)
+confidence_interval
+```
+
+# Mutants Dose Response to MEK162
+```{r MEK162}
+mek2_dose = read_csv("../data/mek162_mutant_dose_response.csv")
+mek2_dose = gather(mek2_dose, key = concentration, value = number, -c(sample, rep_number), convert = TRUE)
+factor_levels = as.list(1:7)
+names(factor_levels) = unique(mek2_dose$sample)
+mek2_dose$sample2 = factor(mek2_dose$sample, levels = unique(mek2_dose$sample))
+plot_facets(mek2_dose, "concentration", "number", "sample2", "MEK162 Concentration (nM)")
+ggsave("../results/Dose_Response_Script_Output/mek162_facet.eps", family = "Times")
+```
+
+### Generate Figure 3 MEK162 Dose Response
+```{r MEK162 Fig 2}
+agg_1 = aggregate(mek2_dose$number, by=list(sample2 = mek2_dose$sample2, concentration = mek2_dose$concentration), mean)
+agg_2= aggregate(mek2_dose$number, by=list(sample2 = mek2_dose$sample2, concentration = mek2_dose$concentration), sd)
+
+x_axis_labels = c(0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, "3,000", "10,000")
+
+point_data = data.frame(cbind(agg_1, agg_2$x))
+colnames(point_data)[3:4]=c("Mean", "SD")
+this_data = dplyr::bind_rows(point_data, mek2_dose)
+plot_data = bind_rows(point_data, mek2_dose)
+ggplot(plot_data, aes(x =concentration, y = Mean, ymin = (Mean-SD/2), ymax = (Mean+SD/2), group = sample2, color = sample2))+
+  geom_point(size = 2)+
+  geom_errorbar(width = .2)+
+  scale_x_log10(labels = c(0, x_axis_labels), breaks = c(0.01, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000), minor_breaks = NULL)+
+  annotation_logticks(sides = "b", mid = unit(0.1, "cm"))+
+  scale_y_continuous( breaks = c(0, .25, .5, .75, 1))+
+  geom_smooth(aes(x = concentration, y = number), method = 'loess', se=FALSE, span = 0.75)+
+  labs(color = "sample")+
+  coord_cartesian(xlim = c(0.01, 10000), ylim = c(0, 1.15))+
+  xlab("MEK162 Concentration (nM)")+
+  ylab("Normalized Cell Number")+
+  scale_color_manual(values = c("#000000", "#ff0000", "#3690c0", "#228B22", "#00FFFF", "#FF6600", "#dd3497"))+
+  theme_bw()+
+  theme(text=element_text(size=14,  family="Times"), axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("../results/Dose_Response_Script_Output/mek162_dose_responses.eps", family = "Times")
+```
+
+Estimate IC50
+```{r MEK162 IC50}
+fifty = vector("list", 6)
+index = 1
+for(ii in unique(mek2_dose$sample)){
+  data_subset = filter(mek2_dose, sample == ii)
+  fit_line = loess(data_subset$number~log10(data_subset$concentration), span = 0.5)
+  start = log10(1)
+  end = log10(10000)
+  diff = 100
+  while(diff >0.0001){
+    x = seq(start, end, length.out = 10000)
+    y = predict(fit_line, x)
+    r = find_ic50(y)
+    if(is.na(x[r[[1]]+1])) break
+    start = x[r[[1]]]
+    end = x[r[[1]]+1]
+    diff = abs(r[[2]]-0.5)
+  }
+  if(!is.na(r[[1]])) fifty[[index]] = 10^c(x[r[[1]]], x[r[[1]]+1]) %>% mean
+  index = index + 1
+}
+names(fifty) = unique(mek2_dose$sample)
+fifty
+```
+
+Bootstrap 200 samples to get confidence intervals of IC50
+```{r MEK162 confidence interval}
+fifty_ci = vector("list", 6)
+confidence_interval = vector("list", 6)
+index = 1
+for(ii in unique(mek2_dose$sample)){
+  val_range = matrix(0, nrow =1, ncol = 200)
+  for(jj in 1:200){
+    data_subset = filter(mek2_dose, sample == ii)
+    by_conc = data_subset %>% group_by(concentration)
+    boot_data = sample_frac(by_conc, 1, replace = TRUE)
+    fit_line = loess(boot_data$number~log10(boot_data$concentration), span = 0.5)
+    start = log10(1)
+    end = log10(10000)
+    diff = 100
+    while(diff >0.0001){
+      x = seq(start, end, length.out = 10000)
+      y = predict(fit_line, x)
+      r = find_ic50(y)
+      if(is.na(x[r[[1]]+1])) break
+      start = x[r[[1]]]
+      end = x[r[[1]]+1]
+      diff = abs(r[[2]]-0.5)
+    }
+    if(!is.na(r[[1]])) val_range[jj] = 10^c(x[r[[1]]], x[r[[1]]+1]) %>% mean
+    if(is.na(r[[1]])) break
+  }
+  fifty_ci[[index]] <- sort(val_range - fifty[[index]])
+  confidence_interval[[index]] = fifty[[index]] + fifty_ci[[index]][c(5,195)]
+  index = index + 1
+}
+names(confidence_interval) = unique(mek2_dose$sample)
+confidence_interval
+```
+
+# Time Course Dose Responses
+```{r, message = FALSE}
+dose_data = read_csv("../data/intermittent_dose_response.csv")
+dose_data2 = gather(dose_data, concentration, number, -c(sample, rep_number), convert = TRUE)
+plot_facets(dose_data2, "concentration", "number", "sample", "LGX Concentration (nM)")
+ggsave("../results/Dose_Response_Script_Output/timecourse_facet_dose_responses.eps")
+```
+
+### Create figure 4 dose responses
+#### Continuous Dose Response
+```{r continuous, warning = FALSE, message = FALSE}
+dose_data_continuous = filter(dose_data2, sample =="Vector Control" | sample =="V600E" | sample =="Week 1" |sample =="Week 2 C" | sample =="Week 3 C" | sample =="Week 4 C")
+
+agg_1 = aggregate(dose_data_continuous$number, by=list(sample = dose_data_continuous$sample, concentration = dose_data_continuous$concentration), mean)
+agg_2= aggregate(dose_data_continuous$number, by=list(sample = dose_data_continuous$sample, concentration = dose_data_continuous$concentration), sd)
+
+point_data = data.frame(cbind(agg_1, agg_2$x))
+this_data = dplyr::bind_rows(point_data, dose_data_continuous)
+colnames(point_data)[3:4]=c("Mean", "SD")
+
+x_axis_labels = c(0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, "3,000", "10,000")
+
+plot_data = bind_rows(point_data, dose_data_continuous)
+ggplot(plot_data, aes(x =concentration, y = Mean, ymin = (Mean-SD/2), ymax = (Mean+SD/2), group = sample, color = sample))+
+  geom_point(size = 2)+
+  geom_errorbar(width = .2)+
+    scale_x_log10(labels = c(0, x_axis_labels), breaks = c(0.01, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000), minor_breaks = NULL)+
+  annotation_logticks(sides = "b", mid = unit(0.1, "cm"))+
+  scale_y_continuous(limits = c(0, 1.09), breaks = c(0, .25, .5, .75, 1))+
+  geom_smooth(aes(x = concentration, y = number), method = 'loess', se=FALSE, span = 0.5)+
+  xlab("LGX818 Concentration (nM)")+
+  ylab("Normalized Cell Number")+
+  scale_color_manual(values = c("#4c4c4c", "#a9a9a9", "#bae4bc", "#7bccc4", "#43a2ca", "#0868ac"))+
+  coord_cartesian(xlim = c(0.01, 10000), ylim = c(0, 1.05))+
+  theme(text=element_text(size=14,  family="Times"), axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("../results/Dose_Response_Script_Output/continuous_dose_response.eps", family = "Times")
+```
+
+#### Intermittent Dose Response
+```{r Intermittent, warning = FALSE, message=FALSE}
+dose_data_int = filter(dose_data2, sample =="Vector Control" | sample =="V600E" | sample =="Week 1" |sample =="Week 2 I" | sample =="Week 3 I" | sample =="Week 4 I")
+
+agg_1 = aggregate(dose_data_int$number, by=list(sample = dose_data_int$sample, concentration = dose_data_int$concentration), mean)
+agg_2= aggregate(dose_data_int$number, by=list(sample = dose_data_int$sample, concentration = dose_data_int$concentration), sd)
+
+point_data = data.frame(cbind(agg_1, agg_2$x))
+this_data = dplyr::bind_rows(point_data, dose_data_int)
+colnames(point_data)[3:4]=c("Mean", "SD")
+
+plot_data = bind_rows(point_data, dose_data_int)
+INT = data.frame(INT = (substr(plot_data$sample, 8,8)=="I"))
+plot_data = bind_cols(plot_data, INT)
+ggplot(plot_data, aes(x =concentration, y = Mean, ymin = (Mean-SD/2), ymax = (Mean+SD/2), group = sample, color = sample, linetype = INT))+
+  geom_point(size = 2)+
+  geom_errorbar(width = .2, linetype = "solid")+
+  scale_x_log10(labels = c(0, x_axis_labels), breaks = c(0.01, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000), minor_breaks = NULL)+
+  annotation_logticks(sides = "b", mid = unit(0.1, "cm"))+
+  scale_y_continuous(limits = c(0, 1.09), breaks = c(0, .25, .5, .75, 1))+
+  geom_smooth(aes(x = concentration, y = number, linetype = INT), method = 'loess', se=FALSE, span = 0.5)+
+  xlab("LGX818 Concentration (nM)")+
+  ylab("Normalized Cell Number")+
+  coord_cartesian(xlim = c(0.01, 10000), ylim = c(0, 1.05))+
+  scale_linetype_discrete(guide = FALSE)+
+  scale_color_manual(values = c("#4c4c4c", "#a9a9a9", "#bae4bc", "#7bccc4", "#43a2ca", "#0868ac"))+
+  theme(text=element_text(size=14,  family="Times"), axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+ggsave("../results/Dose_Response_Script_Output/intermittent_dose_response.eps", family = "Times")
+```
+
+Estimate IC50s
+```{r IC50 estimate}
+fifty = vector("list", 9)
+index = 1
+for(ii in unique(dose_data2$sample)){
+  data_subset = filter(dose_data2, sample == ii)
+  fit_line = loess(data_subset$number~log10(data_subset$concentration), span = 0.5)
+  start = log10(1)
+  end = log10(10000)
+  diff = 100
+  while(diff >0.0001){
+
+    x = seq(start, end, length.out = 10000)
+    y = predict(fit_line, x)
+    r = find_ic50(y)
+    start = x[r[[1]]]
+    end = x[r[[1]]+1]
+    diff = abs(r[[2]]-0.5)
+  }
+  fifty[[index]] = 10^c(x[r[[1]]], x[r[[1]]+1]) %>% mean
+  index = index + 1
+}
+names(fifty) = unique(dose_data$sample)
+fifty
+```
+
+Bootstrap samples to get confidence intervals for IC50s
+```{r Confidence Interval}
+fifty_ci = vector("list", 9)
+confidence_interval = vector("list", 9)
+index = 1
+for(ii in unique(dose_data$sample)){
+  val_range = matrix(0, nrow =1, ncol = 200)
+  for(jj in 1:200){
+    data_subset = filter(dose_data2, sample == ii)
+    by_conc = data_subset %>% group_by(concentration)
+    boot_data = sample_frac(by_conc, 1, replace = TRUE)
+    fit_line = loess(boot_data$number~log10(boot_data$concentration), span = 0.5)
+    start = log10(1)
+    end = log10(10000)
+    diff = 100
+    while(diff >0.0001){
+      x = seq(start, end, length.out = 10000)
+      y = predict(fit_line, x)
+      r = find_ic50(y)
+      start = x[r[[1]]]
+      end = x[r[[1]]+1]
+      diff = abs(r[[2]]-0.5)
+    }
+    val_range[jj] = 10^c(x[r[[1]]], x[r[[1]]+1]) %>% mean
+  }
+  fifty_ci[[index]] <- sort(val_range - fifty[[index]])
+  confidence_interval[[index]] = fifty[[index]] + fifty_ci[[index]][c(5,195)]
+  index = index + 1
+}
+names(confidence_interval) = unique(dose_data2$sample)
+confidence_interval
+```
+
+```{r sessionInfo}
+sessionInfo()
+```
+

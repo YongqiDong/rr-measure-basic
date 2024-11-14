@@ -1,0 +1,3 @@
+We propose a feature extension technology called pcc-wfe, and construct sgru classifier of Gru neural network. This project realizes the performance evaluation of pcc-wfe technology and sgru classifier in the task of epilepsy automatic diagnosis.Epileptic Seizure Recognition Dataset is used to determine the performance of the proposed epileptic seizure recognition method.The Epileptic Seizure Recognition Dataset is taken from UCI Machine Learning Repository https://archive.ics.uci.edu/ml/datasets/Epileptic+Seizure+Recognition
+By running RawData_ML_Kfold.py and NewData_ML_Kfold.py to complete the performance test of PCC_WFE technique, by running SGRU_GRU_Kfold.py to complete the test of SGRU neural network classifier
+

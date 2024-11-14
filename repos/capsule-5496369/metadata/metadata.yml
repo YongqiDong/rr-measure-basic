@@ -1,0 +1,30 @@
+metadata_version: 1
+name: Metabolomic machine learning predictor for diagnosis and prognosis of gastric
+  cancer
+description: This project consist of Random forest model for GC diagnosis and the
+  Survival outcomes prediction of GC patients using Random survival forest (RSF) method.
+authors:
+- name: Yangzi Chen
+  affiliations:
+  - name: Tsinghua University
+- name: Bohong Wang
+  affiliations:
+  - name: Tsinghua University
+- name: Yizi Zhao
+  affiliations:
+  - name: Tsinghua
+- name: Xinxin Shao
+  affiliations:
+  - name: National Cancer Center, National Clinical Research Center for Cancer, Cancer
+      Hospital, Chinese Academy of Medical Sciences, Peking Union Medical College
+- name: ' Mingshuo Wang'
+  affiliations:
+  - name: Tsinghua University
+- name: Fuhai Ma
+  affiliations:
+  - name: Department of General Surgery, Department of Gastrointestinal Surgery, Beijing
+      Hospital, National Center of Gerontology, Institute of Geriatric Medicine, Chinese
+      Academy of Medical Sciences
+corresponding_contributor:
+  name: Zeping Hu
+  email: zeping_hu@tsinghua.edu.cn

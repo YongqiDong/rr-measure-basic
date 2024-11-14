@@ -1,0 +1,22 @@
+---
+title: "Untitled"
+output:
+  md_document:
+    variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+
+
+```{r cars}
+library(dplyr)
+dataSet <- iris
+print(class(dataSet$Sepal.Length))
+data <-  mutate_at(iris,vars(Sepal.Length),scale)
+print(class(data$Sepal.Length))
+```
+

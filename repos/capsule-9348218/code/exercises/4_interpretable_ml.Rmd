@@ -1,0 +1,120 @@
+
+<!-- ## Practical Exercise IV: Interpretable Machine Learning with mlr3 and DALEX -->
+
+For our empirical demonstration, we will use the *DALEX/DALEXtra* R packages [@dalex], which come with a detailed online textbook [@biecek2021].
+An alternative is the *iml* package [@molnar_iml_2018] with its excellent online companion book [@molnar2019].
+The mlr3 e-book also contains a chapter on how to use both frameworks [@mlr3book2022].
+We use all IML methods on a RF model trained on the complete Sociability regression task.
+For a discussion on whether using IML on the complete dataset or using some combination of training and test sets, see chapter 8.5.2 in @molnar2019.
+```{r, include=FALSE}
+# load the package
+library(mlr3verse)
+
+# load the data
+phonedata <- readRDS(file = "../../data/clusterdata.RDS")
+phonedata <- phonedata[complete.cases(phonedata$gender),]
+phonedata <- phonedata[, c(1:1821, 1823, 1837)]
+
+# create the regression task
+task_Soci <- as_task_regr(phonedata, id = "Sociability_Regr",
+  target = "E2.Sociableness")
+task_Soci$set_col_roles("gender", remove_from = "feature")
+
+# create learner
+imputer <- po("imputemedian")
+rf_regr <- lrn("regr.ranger", num.trees = 100)
+rf_regr <- as_learner(imputer %>>% rf_regr)
+```
+First, we train the RF GraphLearner from earlier (which includes the imputation pipeline) on our complete Sociability task.
+```{r}
+set.seed(123)
+rf_regr$train(task_Soci)
+```
+Then we construct an *explainer* object from the *DALEXtra* package, which takes as main inputs: `model` = a trained mlr3 model, `data` = the feature values of new observations for which predictions shall be computed (in our case these are the same data from our task appended with the *gender* variable), `y` = the target values for these new observations.^[Be careful when using `explain_mlr3` with a classification task: `y` must to be a numeric variable with the positive class coded as 1 and the other coded with 0; `predict_function_target_column` must be set to the label of the positive class.]
+```{r}
+library(DALEXtra)
+library(ggplot2)
+
+rf_exp <- explain_mlr3(rf_regr, 
+  data = cbind(phonedata[, 1:1821], phonedata$gender),
+  y = phonedata$E2.Sociableness,
+  label = "ranger explainer", colorize = FALSE)
+exemplary_features <- c("nightly_mean_num_call", "daily_mean_num_call_out", 
+  "daily_mean_num_.com.whatsapp")
+```
+The explainer object can be used for all IML methods included in the *DALEX/DALEXtra* packages. 
+To reduce the computational load for this tutorial, we only use a small subset of exemplary features for which we compute the IML methods.
+In practice, we would include all features from our task.
+
+### Permutation Variable Importance
+(ref:feat-imp-caption) Permutation variable importance for three exemplary features based on the random forest model trained on the full Sociability regression task.
+
+To compute PVI, we use the `model_parts` function.
+```{r imp, fig.cap="(ref:feat-imp-caption)", out.width="\\linewidth", fig.width=5, fig.height=3, echo=TRUE}
+varimp <- model_parts(rf_exp, B = 3, N = 400, variables = exemplary_features, 
+  type = "difference")
+plot(varimp, show_boxplots = TRUE)
+```
+We only use a subset of observations (`N`) and a limited number of permutations (`B`) to reduce running times.
+In practice, we would increase the number of permutations and use all available observations.
+We plot the resulting objects (Figure \@ref(fig:imp)), including boxplots that visualize the variability of feature importance across permutations.
+The default performance measure for regression tasks is the $RMSE$.
+With `type = "difference"` in the `model_parts` function, the shuffled $RMSE$ minus the unshuffled $RMSE$ is displayed on the y-axis.
+This difference is more positive for more important features.
+
+The PhoneStudy dataset consists of a very large number of features.
+In such settings, it can be more enlightening to interpret variable importance for groups of features [e.g., app categories, see @Stachl2020].^[In *DALEX*, grouped variable importance can be computed by using the `variable_groups` argument of the `model_parts` function as described in <https://ema.drwhy.ai/featureImportance.html#featureImportanceR>.]
+
+### Individual Conditional Expectation Profiles and Partial Dependence Plot
+(ref:ice-caption) Individual conditional expectation profiles for the average number of telephone calls at night (nightly_mean_num_call) based on the random forest model trained on the full Sociability regression task.
+
+The `model_profile` function computes different measures to visually inspect feature effects.
+ICE is used when setting `type = "partial"` in `model_profile` and `geom = "points"` (or `geom = "profiles"`) in the corresponding `plot` command.
+```{r ice, fig.cap="(ref:ice-caption)", out.width="\\linewidth", fig.width=5, fig.height=3, echo=TRUE}
+ice <- model_profile(rf_exp, variables = exemplary_features, 
+  N = 100, center = FALSE, type = "partial")
+plot(ice,  geom = "points", variables = "nightly_mean_num_call") + 
+  geom_rug(sides = "b") + xlim(0, 2) + ylim(0.5, 2)
+```
+Each ICE profile (i.e., each line in the plot) in Figure \@ref(fig:ice) corresponds to one person in our dataset.
+It shows how the model's predicted sociability for this person (on the y-axis) changes when we arbitrarily set the average number of telephone calls at night (*nightly_mean_num_call*; on the x-axis) to different values across the observed range, while keeping the person's observed values on all **other** features.
+In this example, there is no sign for any strong interactions and the effect of all single features on the target seem quite weak [*nightly_mean_num_call* is already the most important feature measured by PVI, see @Stachl2020].
+The PD is already displayed in the ICE plot in Figure \@ref(fig:ice) as the bold blue line.
+We could also request the PD by itself with `type = "partial"` in `model_profile` and `geom = "aggregates"` in the `plot` function.
+On average, we see a slight increase in predicted Sociability for a higher number of nightly calls.
+The corresponding ALE plot looks very similar and can be found in ESM 7.2.
+```{r, out.width="\\linewidth", fig.width=5, fig.height=3, echo=FALSE, eval=FALSE}
+pd <- model_profile(rf_exp, variables = exemplary_features, 
+  N = 200, center = FALSE, type = "partial")
+plot(pd,  geom = "aggregates", variables = "nightly_mean_num_call") + 
+  geom_rug(sides = "b") + xlim(0, 2)
+```
+
+Note that for these PhoneStudy examples, IML methods probably do not reveal causal effects:
+Personality theory would consider it unreasonable that some intervention that would simply call study participants at late hours, thereby increasing the average number of telephone calls at night (feature *nightly_mean_num_call*), would lead to an increase in those participants' sociability.
+
+### Aspects of Model Fairness
+
+To explore whether the predictive performance of our model differs between men and women, we compute predictive performance separately for each gender with the *mlr3fairness* companion package [@R-mlr3fairness].
+When *mlr3fairness* is loaded before creating *task_Soci*, we can declare *gender* as a protected attribute (*pta*).
+We can then create *groupwise* performance measures that automatically take this variable into account.
+```{r}
+library(mlr3fairness)
+task_Soci <- as_task_regr(phonedata, id = "Sociability_Regr",
+  target = "E2.Sociableness")
+task_Soci$set_col_roles("gender", add_to = "pta", 
+  remove_from = "feature")
+mes_fair <- c(groupwise_metrics(msr("regr.rsq"), task_Soci),
+  groupwise_metrics(msr("regr.rmse"), task_Soci))
+set.seed(2)
+res <- resample(task_Soci, rf_regr, rsmp("cv", folds = 10))
+res$aggregate(mes_fair)
+```
+The resampling results suggest that our model makes more accurate predictions for women (*f*) than for men (*m*).
+One plausible reason could be that the dataset contains more observations from women (`r round(table(phonedata$gender)["f"]/nrow(phonedata) * 100)`% women).
+The *mlr3fairness* package includes many more options for classification than for regression settings.
+Apart from evaluating fairness with different fairness metrics, it also contains methods to construct models with better fairness properties by using augmented ML models or debiasing methods.
+
+To explore whether predicted sociability differentially depends on the value of the feature *nightly_mean_num_call* for men and women, the PD plot introduced earlier can be computed simultaneously for both genders, which we demonstrate in ESM 7.3.
+While the form of the relationship between the feature and the target predictions seems similar for both genders, the model generally predicts higher sociability for women than for men.
+Note that for both fairness analyses, the gender variable was *not* used as a feature when training the predictive model.

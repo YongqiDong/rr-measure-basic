@@ -1,0 +1,7 @@
+metadata_version: 1
+name: An Attention-based CNN-BiLSTM Hybrid Neural Network Enhanced with Features of Discrete Wavelet Transformation for Fetal Acidosis Classification
+description: Cardiotocography monitoring; Fetal acidosis; Deep learning;
+authors:
+- name: Mujun Liu
+  affiliations:
+  - name: Jinan University

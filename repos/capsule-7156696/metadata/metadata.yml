@@ -1,0 +1,18 @@
+metadata_version: 1
+name: Light fluence in skin for PDT light-dose planning
+description: Interactive modeling of effective light fluence at depths into the skin
+  for PDT dose comparison
+tags:
+- photodynamic-therapy
+- daylight-pdt
+- ppix-weighted-light-dose
+- tissue-optics
+- monte-carlo
+- monte-carlo-simulations
+authors:
+- name: Ethan LaRochelle
+  affiliations:
+  - name: Dartmouth College
+corresponding_contributor:
+  name: Ethan LaRochelle
+  email: ethan.phillip.m.larochelle.th@dartmouth.edu

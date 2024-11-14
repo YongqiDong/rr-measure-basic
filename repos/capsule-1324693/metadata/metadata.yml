@@ -1,0 +1,44 @@
+metadata_version: 1
+name: 'Code for: Self-esteem, relationship threat, and dependency regulation: Independent
+  replication of Murray, Rose, Bellavia, Holmes, and Kusche (2002) Study 3'
+description: Across three studies, Murray, Rose, Bellavia, Holmes, and Kusche (2002)
+  found that low self-esteem individuals responded in a negative manner compared to
+  those high in self-esteem in the face of relationship threat, perceiving their partners
+  and relationships less positively. This was the first empirical support for the
+  hypothesized dynamics of a dependency regulation perspective, and has had a significant
+  impact on the field of relationship science. In the present research, we sought
+  to reproduce the methods and procedures of Study 3 of Murray et al. (2002) to further
+  test the two-way interaction between individual differences in self-esteem and situational
+  relationship threat. Manipulation check effects replicated the original study, but
+  no interaction between self-esteem and experimental condition was observed for any
+  primary study outcomes.
+tags:
+- replication
+- psychology
+- relationships
+- experiment
+authors:
+- name: Lorne Campbell
+  affiliations:
+  - name: Western University
+- name: Rhonda N. Balzarini
+  affiliations:
+  - name: Western University
+- name: Taylor Kohut
+  affiliations:
+  - name: Western University
+- name: Kiersten Dobson
+  affiliations:
+  - name: Western University
+- name: Christian M. Hahn
+  affiliations:
+  - name: Western University
+- name: Sarah E. Moroz
+  affiliations:
+  - name: Western University
+- name: Sarah C.E. Stanton
+  affiliations:
+  - name: Western University
+corresponding_contributor:
+  name: Lorne Campbell
+  email: lcampb23@uwo.ca

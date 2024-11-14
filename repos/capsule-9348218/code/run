@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -ex
+
+# This command renders manuscript.Rmd as a pdf and records package information as sessionInfo.txt
+Rscript -e "rmarkdown::render(input = 'manuscript.Rmd', output_dir = '../results', clean = TRUE); writeLines(capture.output(sessionInfo()), '../results/sessionInfo_manuscript.txt')"
+
+rm -f *.aux *.blg *.synctex.gz # all newly created files in /code are, by default, cleared between runs
+  
+Rscript -e "rmarkdown::render(input = 'electronic_supplemental_material.Rmd', output_dir = '../results', clean = TRUE); writeLines(capture.output(sessionInfo()), '../results/sessionInfo_electronic_supplemental_material.txt')"
+
+rm -f *.aux *.blg *.synctex.gz # all newly created files in /code are, by default, cleared between runs

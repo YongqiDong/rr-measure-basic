@@ -1,0 +1,17 @@
+metadata_version: 1
+name: Identifying Predictors of Within-person Variance in MRI-based Brain Volume estimates
+description: |-
+  This archive reproduces the results of Identifying predictors of within-person variance in MRI-based brain volume estimates (submitted). Here is the abstract:
+  Adequate reliability of measurement is a precondition for investigating individual differences and age-related changes in brain structure. One approach to improve reliability is to identify and control for variables that are predictive of within-person variance. To this end, we applied classical statistical methods and machine-learning-inspired approaches to structural magnetic resonance imaging (sMRI) data of six participants aged 24–31 years gathered at 40–50 occasions distributed over 6–8 months from the Day2day study. We explored the within-person associations between 21 variables covering physiological, affective, social, and environmental factors and global measures of brain volume estimated by VBM8 and FreeSurfer. Time since first scan was reliably associated with Freesurfer estimates of grey matter volume and total cortex volume, in line with a rate of annual brain volume shrinkage of about 1 percent. For the same two structural measures, time of day also emerged as a reliable predictor with an estimated diurnal volume decrease of, again, about 1 percent. Furthermore, we found weak predictive evidence for the number of steps taken on the previous day, and testosterone levels. The results suggest a need to control for time-of-day effects in sMRI research. In particular, we recommend that researchers interested in assessing longitudinal change in the context of intervention studies or longitudinal panels make sure that, at each measurement occasion, (a) a given participant is measured at the same time of day; (b) participants overall are measured at about the same time of day. Furthermore, the potential effects of physical activity, including moderate amounts of aerobic exercise, and testosterone levels on MRI-based measures of brain structure deserve further investigation.
+tags:
+- mri
+- longitudinal-data
+- statistics
+- machine-learning
+authors:
+- name: Julian Karch
+  affiliations:
+  - name: Leiden University
+corresponding_contributor:
+  name: Julian Karch
+  email: j.d.karch@fsw.leidenuniv.nl

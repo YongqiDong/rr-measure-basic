@@ -1,0 +1,16 @@
+metadata_version: 1
+name: A University Admission Prediction System using Stacked Ensemble Learning
+description: Ensemble model for prediction of Graduate Admission
+authors:
+- name: Sashank Sridhar
+  affiliations:
+  - name: Anna University
+- name: Siddartha Mootha
+  affiliations:
+  - name: Anna University
+- name: Santosh Kolagati
+  affiliations:
+  - name: Anna University
+corresponding_contributor:
+  name: Sashank Sridhar
+  email: sashank.ssridhar@gmail.com

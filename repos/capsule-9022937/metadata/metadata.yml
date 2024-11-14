@@ -1,0 +1,7 @@
+metadata_version: 1
+name: Development of an Internet of Things Solution to Monitor and Analyse Indoor Air Quality
+description: This R script performs statistical analysis of air quality data collected from BME680 sensors which was stored on an SD card, interfaced with an ESP32 microcontroller.  The statistical analysis performs some correlations tests, along with other calculations on the data collected.
+authors:
+- name: Dylan Wall BSc MSc
+  affiliations:
+  - name: University of Ulster

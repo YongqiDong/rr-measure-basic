@@ -1,0 +1,113 @@
+---
+title: "Results for: Research Ethics Committees as an intervention point to promote a priori sample size calculations"
+author: "Analysis written by: Robert Thibault"
+date: "11 Nov 2023"
+output:
+  pdf_document: default
+header-includes: \usepackage[labelformat=empty]{caption}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = FALSE) # this option stops the code chunks from being output from the knit
+set.seed(1313)
+```
+
+```{r packages}
+library(tidyverse) # for cleaner code
+library(knitr) # for kable function
+library(kableExtra) # for kable table styling
+```
+
+```{r analysis}
+# This chuck calcuates all the results
+
+# Import data
+filename <- file.path("..", "data", "rec_data_raw.csv")
+rec <- read.csv(filename, header = T)
+
+# Create separate dataframes for only US and only UK institutions
+us <- rec %>% filter(country == "us" & !is.na(expenditure_rank))
+uk <- rec %>% filter(country == "uk" & !is.na(expenditure_rank))
+
+# Create a function to output all the values for the flowchart
+rec_flowchart <- function(df){ 
+  flowchart <- data.frame(
+    item = c(
+      "Institutions sampled",
+      "Public forms identified",
+      "Institutions contacted",
+      "Public forms identified after contact",
+      "Private forms provided",
+      "Forms indicated as not available to share", 
+      "No response"
+    ),
+    count = c(
+      nrow(df),
+      sum(df$included == 1 & df$contacted == 0),
+      sum(df$contacted == T),
+      sum(df$contacted == 1 & df$form_available == "public", na.rm = T),
+      sum(sum(df$contacted == 1 & df$form_available == "private", na.rm = T)),
+      sum(grepl("declined", df$form_available)),
+      sum(df$form_available == "noreply" | is.na(df$form_available))
+    )
+  )
+  return(flowchart)
+}
+
+# Create a function to output all the values for the outcomes
+rec_outcomes <- function(df){
+  outcomes <- data.frame(
+    item = c(
+      "Sample size",
+      "Justification",
+      "Calculation",
+      "Calculation (indirectly)"
+    ),
+    count = c(
+      sum(df$sample_size, na.rm = TRUE),
+      sum(df$justification, na.rm = TRUE),
+      sum(df$calculation == 1, na.rm = TRUE),
+      sum(df$calculation == 99, na.rm = TRUE)
+    )
+  )
+  return(outcomes)
+}
+
+us_flowchart <- rec_flowchart(us)
+uk_flowchart <- rec_flowchart(uk)
+
+us_outcomes <- rec_outcomes(us)
+uk_outcomes <- rec_outcomes(uk)
+
+us_combined <- bind_rows(
+  rec_flowchart(us),
+  rec_outcomes(us)
+  )
+
+uk_combined <- bind_rows(
+  rec_flowchart(uk),
+  rec_outcomes(uk)
+  )
+
+rec_results <- cbind(
+  us_combined, 
+  uk_combined$count
+)
+```
+
+```{r, output, include = TRUE, echo = FALSE, results = "asis"}
+  knitr::kable(rec_results, 
+               caption = "Table 1. Form inclusion and results", 
+               booktabs = T, 
+               linesep = "\\addlinespace",
+               col.names = c(
+                 "Flowchart item",
+                 "US (n)",
+                 "UK (n)"
+               )
+  ) %>%
+  kable_styling(latex_options = "striped") %>%
+  add_footnote("These numbers are to be input into the the flowchart in the manuscript (Figure 1).", notation = "none", threeparttable = T)
+```

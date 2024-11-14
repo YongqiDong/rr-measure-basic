@@ -1,0 +1,15 @@
+metadata_version: 1
+name: Neural Network for Predicting Stroke Team Performance
+description: |-
+  Implementation of a shallow neural network using TensorFlow Low Level APIs.
+   This is an attempt to design a neural network with the aim of predicting team performance in acute stroke care, in terms of the door to needle time. Duration, severity by NIHSS stroke scale, age in years and hour of the day at arrival were identified as the predictive features, and door to needle time of above 45 minutes was set as the target for training the neural network. A three-layered network was implemented using TensorFlow and was trained on historical data and validated on a separate set. The network after optimization shows precision 63%, recall 67% and F1 64% on the validation set, with an overall accuracy of 60% (defined as the percentage of delay &gt; 45 min correctly predicted). With the above four parameters, though individually having a weak association, the neural network was able to construct a reasonable prediction model for stroke team performance.
+tags:
+- machine-learning
+- neural-network
+authors:
+- name: Mohan Noone
+  affiliations:
+  - name: Baby Memorial Hospital
+corresponding_contributor:
+  name: Mohan Noone
+  email: drmohan@babymhospital.com

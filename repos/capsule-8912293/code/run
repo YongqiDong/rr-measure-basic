@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -ex
+
+Rscript 01_data_processing.R
+Rscript 02_info_exps.R
+Rscript 03_colorado_sim.R
+Rscript 04_pap_analysis.R
+Rscript 05_existing_applications.R

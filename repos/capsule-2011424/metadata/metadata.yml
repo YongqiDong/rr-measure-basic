@@ -1,0 +1,24 @@
+metadata_version: 1
+name: Mining Emerging Fuzzy-Temporal Gradual Patterns [BorderT-GRAANK]
+description: |-
+  Pattern mining in data-sets is a Computer Science field that is gaining more popularity in the current years. A recent
+  category that has appeared in this field is known as fuzzy-temporal gradual pattern mining, which allow for extraction of correlations between attributes of a data-set separated by an approximated time lag. For instance, a fuzzy-temporal gradual pattern can be of the form “the more K, the less L almost 7 months later”. However, it is possible for such patterns to change at different time intervals; for instance, after 10 years the pattern may evolve to be “the more K, the more L almost 7 months later”. Several experiments have been led to show that this phenomenon, referred to as emerging trends, is a possible occurrence when frequent patterns are extracted from two data-sets with the same attributes. An emerging pattern is a pattern that appears more in one data-set than in another. In this paper, we argue that emerging fuzzy-temporal gradual patterns can be captured within the same data-set. We show that by proposing an approach for mining these patterns and testing it on a real data-set. Our results suggest that our approach can be integrated into an Internet of Things model in order to enable it to automatically stabilize its power consumption.
+tags:
+- border-representation
+- emerging-trends
+- fuzzy-temporal-tendencies
+- gradual-patterns
+- bordert-graank
+authors:
+- name: Dickson Odhiambo Owuor
+  affiliations:
+  - name: Université Montpellier 1
+- name: Anne Laurent
+  affiliations:
+  - name: Université Montpellier 1
+- name: Joseph Onderi Orero
+  affiliations:
+  - name: Strathmore University
+corresponding_contributor:
+  name: Dickson Owuor
+  email: owuordickson@ieee.org

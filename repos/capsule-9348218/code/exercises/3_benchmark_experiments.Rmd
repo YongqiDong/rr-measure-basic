@@ -1,0 +1,131 @@
+
+<!-- ## Practical Exercise III: Model Comparisons with Benchmark Experiments -->
+
+In our third exercise, we will conduct two benchmark experiments. 
+The first benchmark experiment illustrates a classification task, the second a regression task. 
+We will apply the RF from *Module II*, along with other learners. 
+Besides a *featureless* learner, we also compare the RF to a so-called *LASSO* model [@tibshirani_regression_1996] in our benchmark experiments.
+The LASSO is a linear regression (or classification) model that can effectively include a large number of features by shrinking the coefficients towards zero.
+This shrinkage also results in coefficients of exactly zero for unimportant features, thereby performing automatic variable selection because the corresponding features will not be taken into account when computing predictions.
+The results can be interpreted similar to ordinary linear or logistic regression because the LASSO can be seen as an alternative method to estimate the model parameters of these models.
+We have observed in our own ML applications that LASSO often performs comparably or even better than RF on survey data [e.g., @pargent_predictive_2018].
+Thus, we recommend by default to include the LASSO into benchmark experiments when working with psychological data.
+A non-technical introduction to the LASSO is provided by @james2021.
+
+```{r, include=FALSE}
+# load the package
+library(mlr3verse)
+
+# load the data
+phonedata <- readRDS(file = "../../data/clusterdata.RDS")
+phonedata <- phonedata[complete.cases(phonedata$gender),]
+phonedata <- phonedata[, c(1:1821, 1823, 1837)]
+
+# create the regression task
+task_Soci <- as_task_regr(phonedata, id = "Sociability_Regr",
+  target = "E2.Sociableness")
+task_Soci$set_col_roles("gender", remove_from = "feature")
+
+# create the classification task
+phonedata$E2.Sociableness_bin <- ifelse(
+  phonedata$E2.Sociableness >= median(phonedata$E2.Sociableness),
+  "high", "low")
+phonedata$E2.Sociableness_bin <- 
+  as.factor(phonedata$E2.Sociableness_bin)
+task_Soci_bin <- as_task_classif(phonedata, 
+  id = "Sociability_Classif", target = "E2.Sociableness_bin", 
+  positive = "high")
+task_Soci_bin$set_col_roles("E2.Sociableness", remove_from = "feature")
+task_Soci_bin$set_col_roles("gender", remove_from = "feature")
+task_Soci_bin$set_col_roles("E2.Sociableness_bin", add_to = "stratum")
+```
+For our benchmark analysis, we reuse the *task_Soci* and *task_Soci_bin* objects we created earlier.
+We create *GraphLearners* fused with imputation (featureless learner, LASSO, and RF) for both a regression and a classification task.
+The featureless learner does not require imputation because it does not use any features.^[We set the `predict_type` of the classification learners to `"prob"`, which is only necessary because we want to show a ROC curve later. For more details on `predict_type`, we refer to the mlr3 e-book [@mlr3book2022].]
+```{r}
+imputer <- po("imputemedian")
+
+fl_classif <- lrn("classif.featureless", predict_type = "prob")
+lasso_classif <- lrn("classif.cv_glmnet", nfolds = 5, 
+  predict_type = "prob")
+lasso_classif <- as_learner(imputer %>>% lasso_classif)
+rf_classif <- lrn("classif.ranger", num.trees = 100, 
+  predict_type = "prob")
+rf_classif <- as_learner(imputer %>>% rf_classif)
+
+fl_regr <- lrn("regr.featureless")
+lasso_regr <- lrn("regr.cv_glmnet", nfolds = 5)
+lasso_regr <- as_learner(imputer %>>% lasso_regr)
+rf_regr <- lrn("regr.ranger", num.trees = 100)
+rf_regr <- as_learner(imputer %>>% rf_regr)
+```
+
+Because benchmark experiments easily become computationally intensive, we will use parallelization (speeding up computations, by using more than one core of the computer simultaneously) which is provided by the *future* package [@bentsson2021].
+To use parallelization with mlr3, the only steps are to load the future package, specify a parallelization *plan* (use `strategy = "multisession"` which should work on both Windows and Mac), and select the number of cores (you can type `parallel::detectCores()` to find out the maximum number of cores available on your computer).
+Parallelization will then be automatically used by mlr3 whenever possible.
+Note that even with a seed, parallel computations are sometimes not fully reproducible, which depends on technical peculiarities which are not specific to mlr3 or R.
+```{r}
+library(future)
+plan("multisession", workers = 2)
+set.seed(2)
+```
+Before we can actually compute the individual benchmark experiments for our regression and classification tasks, we have to declare our benchmark designs.
+These designs specify which learners shall be trained on which tasks and which resampling strategies should be used for each combination of learner $\times$ task.
+We choose 10-fold CV to enable computation on smaller laptops in a reasonable time for our tutorial.
+In a real application, we would apply repeated CV here because performance estimates have a high variability for this example (notice how the estimates change when repeating the benchmark with different seeds).
+After running the experiments by calling the `benchmark` function for each task type, we turn off the parallelization by switching back to `"sequential"` mode.
+```{r}
+design_regr <- benchmark_grid(
+  tasks = task_Soci,
+  learners = list(fl_regr, lasso_regr, rf_regr),
+  resamplings = rsmp("cv", folds = 10))
+bm_regr <- benchmark(design_regr)
+
+design_classif <- benchmark_grid(
+  tasks = task_Soci_bin,
+  learners = list(fl_classif, lasso_classif, rf_classif), 
+  resamplings = rsmp("cv", folds = 10))
+bm_classif <- benchmark(design_classif)
+
+plan("sequential")
+```
+We choose an extended set of performance measures for our regression and classification benchmarks.
+For regression, we look at $R^2$ and $RMSE$ but also consider the *Spearman correlation*, which evaluates predictive performance by correlating the predictions with the true target values.
+Evaluating predictive performance with correlation measures is useful in practical applications in which we only care about *ranking* individuals based on the target (e.g., is this person rather more or less sociable compared to this other person) but the actual target values do not matter.
+Such settings frequently arise in psychological assessment [e.g., personnel selection, @Stachl2020ML].
+For classification, we not only look at $MMCE$ but also consider $SENS$ (i.e., true positive rate) and $SPEC$ (i.e., true negative rate). 
+```{r}
+mes_regr <- msrs(c("regr.rsq", "regr.rmse", "regr.srho"))
+mes_classif <- msrs(c("classif.ce", "classif.tpr", "classif.tnr"))
+```
+First, we compute aggregated performance for the regression benchmark with `aggregate` and print the results.
+We can also request a grouped boxplot for a specific performance measure, which is very useful because it also visualizes the variability of performance estimates across test sets.
+
+(ref:bm-regr-caption) Boxplots displaying the results of the benchmark experiment of the Sociability regression task based on the PhoneStudy dataset. $R^2$ was estimated with 10-fold cross-validation. Left: featureless learner, middle: LASSO, right: random forest.
+
+```{r bm-regr, fig.cap="(ref:bm-regr-caption)", fig.width=10, fig.height=4}
+bmr_regr <- bm_regr$aggregate(mes_regr)
+bmr_regr[, c(4,7:9)]
+autoplot(bm_regr, measure = msr("regr.rsq")) + papaja::theme_apa()
+```
+
+It seems that the RF produces more accurate predictions than the LASSO and the featureless learner for all performance measures.
+Note that the Spearman correlation could not be computed for the LASSO and the featureless learner because both produced constant predictions for all observations within at least one fold.
+While this must always be the case for the featureless learner (i.e., constant prediction based on the target mean in the training set), it seems that the LASSO automatically removed all features from the model (i.e., constant prediction based on the model intercept).
+This observation reflects the bad performance of the LASSO, which cannot effectively use the information contained in the features in this example.
+
+The commands to display benchmark results are similar for the classification benchmark.
+Instead of the grouped boxplot, we here show how to produce a simple ROC plot by calling `autoplot(bm_classif, type = "roc")`.
+
+(ref:bm-classif-caption) ROC plot displaying the results of the benchmark analysis of the Sociability classification task based on the PhoneStudy dataset. ROC curves were estimated with 10-fold cross-validation. The shaded grey region visualizes the variability across test sets.
+
+```{r bm-classif, fig.cap="(ref:bm-classif-caption)", fig.width=10, fig.height=4}
+bmr_classif <- bm_classif$aggregate(mes_classif)
+bmr_classif[, c(4,7:9)]
+autoplot(bm_classif, type = "roc")
+```
+
+When looking at the results, we notice that while $MMCE$ is very similar for RF and LASSO, the models slightly differ in their respective tradeoff of $SENS$ and $SPEC$.
+This finding exemplifies the need to consider other performance measures beyond mean classification error or accuracy in many applied classification settings, in which the practical cost of false positive and false negative predictions are not the same [@sterner2021].
+
+To practice with another benchmark example, ESM 6 contains mlr3 code to perform a benchmark experiment with the Titanic dataset.

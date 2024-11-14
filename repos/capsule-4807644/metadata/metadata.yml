@@ -1,0 +1,40 @@
+metadata_version: 1
+name: 'Less Annotating, More Classifying: Addressing the Data Scarcity Issue of Supervised
+  Machine Learning with Deep Transfer Learning and BERT-NLI'
+description: Supervised machine learning is an increasingly popular tool for analysing
+  large political text corpora. The main disadvantage of supervised machine learning
+  is the need for thousands of manually annotated training data points. This issue
+  is particularly important in the social sciences where most new research questions
+  require the automation of a new task with new and imbalanced training data. This
+  paper analyses how deep transfer learning can help address this challenge by accumulating
+  ‘prior knowledge’ in algorithms. Pre-training algorithms like BERT creates representations
+  of statistical language patterns (‘language knowledge’), and training on universal
+  tasks like Natural Language Inference (NLI) reduces reliance on task-specific data
+  (‘task knowledge’). We systematically show the benefits of transfer learning on
+  a wide range of eight tasks. Across these eight tasks, BERT-NLI fine-tuned on 100
+  to 2500 data points performs on average 10.7 to 18.3 percentage points better than
+  classical algorithms without transfer learning. Our study indicates that BERT-NLI
+  trained on 500 data points achieves similar average performance as classical algorithms
+  trained on around 5000 data points. Moreover, we show that transfer learning works
+  particularly well on imbalanced data. We conclude by discussing limitations of transfer
+  learning and by outlining new opportunities for political science research.
+tags:
+- transfer learning
+- Text Analysis
+- BERT
+authors:
+- name: Moritz Laurer
+  affiliations:
+  - name: VU University Amsterdam
+- name: Wouter van Atteveldt
+  affiliations:
+  - name: VU University Amsterdam
+- name: Andreu Casas
+  affiliations:
+  - name: VU University Amsterdam
+- name: Kasper Welbers
+  affiliations:
+  - name: VU University Amsterdam
+corresponding_contributor:
+  name: Moritz Laurer
+  email: m.laurer@vu.nl

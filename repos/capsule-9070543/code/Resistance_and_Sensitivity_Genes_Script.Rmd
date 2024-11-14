@@ -1,0 +1,142 @@
+---
+title: "Resistance and Sensitivity Genes"
+output: html_document
+---
+This code generates the heatmaps of resistance and sensitivity genes in figure 7 and supplemental figure S3 in Stuart et al. 2018.
+
+First load in libraries
+```{r libraries, message = FALSE, warning=FALSE}
+library(DESeq2)
+library(magrittr)
+library(dplyr)
+library(BiocParallel)
+library(readr)
+```
+
+Load in preprocessed rna seq data image created by the RNA_SEQ_Script.Rmd file.
+```{r helper functions, message = FALSE}
+load("../data/processed_rna_seq_data.rda")
+source("./Helper_Functions/dend_sort_exp.R")
+source("./Helper_Functions/plot_heatmap.R")
+source("Helper_Functions/sort_exp.R")
+```
+
+Run hypothesis tests for the reversible and irreversible criteria.
+```{r hypo tests}
+lfc_thresh = 0.97
+a_thresh = 0.05
+
+# do these significantly change by an abs(lfc) greater than 0.97?
+r24 = results(dds, contrast = c('condition', '2', '4'), alpha = a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r26 = results(dds, contrast = c('condition', '2', '6'), alpha = a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r25 = results(dds, contrast = c('condition', '2', '5'), alpha = a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r27 = results(dds, contrast = c('condition', '2', '7'), alpha = a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r29 = results(dds, contrast = c('condition', '2', '9'), alpha = a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+
+r28 =  results(dds,contrast = c('condition', '2', '8'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r210 =  results(dds,contrast = c('condition', '2', '10'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r56 = results(dds, contrast = c('condition', '5', '6'), alpha = a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r68 =  results(dds,contrast = c('condition', '6', '8'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r108 =  results(dds,contrast = c('condition', '10', '8'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+
+unadjusted_pvals = c(r24$pvalue, r26$pvalue, r56$pvalue, r68$pvalue, r108$pvalue, r25$pvalue, r27$pvalue, r29$pvalue, r28$pvalue, r210$pvalue)
+readjust_pvals = unadjusted_pvals %>% p.adjust(method = "fdr")
+
+tests = list(r24 = r24, r26 = r26, r56 = r56, r68 = r68, r108 = r108, r25 = r25, r27 = r27, r29 = r29, r28 = r28, r210 =r210)
+len_save = 1
+for(ii in names(tests)){
+  len = dim(tests[[ii]])[1]+len_save-1
+  tests[[ii]]$p_readjust = readjust_pvals[len_save:len]
+  len_save = len+1
+}
+```
+
+Identify genes that meet reversibile and irreversible criteria.
+```{r criteria}
+meet_reversible_criteria = which(tests[["r56"]]$p_readjust<a_thresh & tests[["r68"]]$p_readjust<a_thresh & tests[["r108"]]$p_readjust<a_thresh
+                                 & (sign(tests[["r68"]]$log2FoldChange) ==sign(tests[["r108"]]$log2FoldChange)))
+reversible_genes = gene_names[meet_reversible_criteria, ]
+
+meet_irreversible_criteria = which(tests[["r25"]]$p_readjust<a_thresh &
+    tests[["r27"]]$p_readjust<a_thresh & tests[["r29"]]$p_readjust<a_thresh & 
+    tests[["r26"]]$p_readjust<a_thresh & tests[["r28"]]$p_readjust<a_thresh &
+    tests[["r210"]]$p_readjust<a_thresh &
+((sign(tests[["r25"]]$log2FoldChange) == sign(tests[["r27"]]$log2FoldChange)) &
+(sign(tests[["r25"]]$log2FoldChange) == sign(tests[["r29"]]$log2FoldChange)) &
+(sign(tests[["r25"]]$log2FoldChange) == sign(tests[["r26"]]$log2FoldChange)) &
+(sign(tests[["r25"]]$log2FoldChange) == sign(tests[["r28"]]$log2FoldChange)) &
+(sign(tests[["r25"]]$log2FoldChange) == sign(tests[["r210"]]$log2FoldChange)))) %>% setdiff(meet_reversible_criteria)
+
+irreversible_genes = gene_names[meet_irreversible_criteria, ]
+
+reversible_genes %>% write_csv("../results/Resistance_and_Sensitivity_Genes_Script_Output/reversible_changes_genes.csv")
+irreversible_genes %>% write_csv("../results/Resistance_and_Sensitivity_Genes_Script_Output/irreversible_changes_genes.csv")
+```
+
+Load in resistance and sensitivity gene names and categories.
+```{r load data}
+rs_genes = read.csv("../data/resistance_sensitivity_genes.csv", stringsAsFactors = FALSE)
+map = match(rs_genes$symbol, gene_names$symbol)
+lfc = as.data.frame(rlog_data[map,] - rowMeans(rlog_data[map,c(1:3)]))
+colnames(lfc) = c(rep("Vector", 3), rep("V600E", 3), rep("20hr Drug", 3), rep("Week 1 CONT", 3), rep("Week 2 CONT", 3), rep("Week 2 INT (OFF)", 3), rep("Week 3 CONT", 3), rep("Week 3 INT (ON)", 3), rep("Week 4 CONT", 2), rep("Week 4 INT (OFF)", 3))
+
+```
+
+Confirm that all the reversible/irreversible resistance/sensitivity genes meet the above criteria.
+```{r confirm conditions}
+reversible_rs = !(match(rs_genes$symbol, reversible_genes$symbol) %>% is.na)
+rs_genes$symbol[!(reversible_rs ==(rs_genes$category == "RR" |rs_genes$category == "RS"))]
+rs_genes$category[!(reversible_rs ==(rs_genes$category == "RR" |rs_genes$category == "RS"))] = "O"
+irreversible_rs = !(match(rs_genes$symbol, irreversible_genes$symbol) %>% is.na)
+rs_genes$symbol[!(irreversible_rs ==(rs_genes$category == "IC"))]
+rs_genes$category[!(irreversible_rs ==(rs_genes$category == "IC"))] = "O"
+
+lfc_data_frame = data.frame(gene_name = gene_names[map,], category = rs_genes$category, lfc)
+```
+
+## Figure 7 Heatmap
+```{r heatmap 1, message = FALSE}
+index = 0
+lfc_data_frame2 = data.frame()
+categories = c("IC", "RS", "RR")
+horz_breaks = array(NA, dim = c(0,0))
+for (ii in categories) {
+  sub_data = lfc_data_frame %>% filter(category == ii)
+  index = index + dim(sub_data)[1]
+  horz_breaks = c(horz_breaks, index)
+  rownames(sub_data) = sub_data$gene_name.symbol
+  dist.mat = dist(sub_data[,8:33])
+  hc = hclust(dist.mat, method = "ward.D2")
+  mean_exp = round(rowMeans(sub_data[hc$order,c(20:22, 26:28, 31:33)]),4)
+  hc2 = dend_sort_exp(hc, mean_exp) #sort the dendrogram
+  sub_data = sub_data[hc2$order, ]
+  lfc_data_frame2 = bind_rows(lfc_data_frame2, sub_data) #replace in lfc
+}
+lfc_only = lfc_data_frame2[-c(1:4)]
+lfc_only = lfc_only[,c(1:15, 19:21,25,26,16:18,22:24,27:29)]
+horz_breaks = horz_breaks[-3]
+plot_heatmap(lfc_only, thresh = 0.97, cluster_rows = FALSE, cluster_cols = FALSE, gaps_col = c(9,20), gaps_row = horz_breaks, legend_breaks = c(-6, -4, -2, -0.97, 0, 0.97, 2, 4, 6), labels_row = lfc_data_frame2$gene_name.symbol, show_colnames=FALSE, fontsize = 7)
+dev.copy2eps(file="../results/Resistance_and_Sensitivity_Genes_Script_Output/Resistance_and_Sensitivity_Genes_Script_Output.eps")
+```
+
+## Supplmental Figure S3
+```{r heatmap 2, message = FALSE}
+sub_data = lfc_data_frame %>% filter(category == "O")
+rownames(sub_data) = sub_data$gene_name.symbol
+dist.mat = dist(sub_data[,8:33])
+hc = hclust(dist.mat, method = "ward.D2")
+mean_exp = round(rowMeans(sub_data[hc$order,8:33]),4)
+hc2 = dend_sort_exp(hc, mean_exp) #sort the dendrogram
+
+lfc_other_only = sub_data[-c(1:4)]
+lfc_other_only = lfc_other_only[,c(1:15, 19:21,25,26,16:18,22:24,27:29)]
+
+plot_heatmap(lfc_other_only, thresh = 0.97, cluster_rows = hc2, cluster_cols = FALSE, gaps_col = c(9,20), legend_breaks = c(-6, -4, -2, -0.97, 0, 0.97, 2, 4, 6), labels_row = lfc_other_only$gene_name.symbol, show_colnames=FALSE, fontsize = 7)
+dev.copy2eps(file="../results/Resistance_and_Sensitivity_Genes_Script_Output/Supplemental_Resistance_and_Sensitivity_Genes_Script_Output.eps")
+```
+
+
+```{r}
+sessionInfo()
+```
+

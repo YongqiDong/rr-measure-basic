@@ -1,0 +1,83 @@
+---
+title: "Figure 6c"
+output: html_document
+---
+This code generates the heatmap of genes that acquire responsiveness to ERK in figure 6c in Stuart et al. 2018.
+
+Load in libraries
+```{r, message = FALSE, warning=FALSE}
+library(DESeq2)
+library(dplyr)
+library(readr)
+library(magrittr)
+library(BiocParallel)
+```
+
+Load in data image saved from RNA_Seq_Script.Rmd
+Also load in helper functions.
+```{r}
+load("../data/processed_rna_seq_data.rda")
+source("./Helper_Functions/plot_heatmap.R")
+source("./Helper_Functions/dend_sort_exp.R")
+source("./Helper_Functions/sort_exp.R")
+```
+
+Run hypothesis tests
+```{r}
+lfc_thresh = 0.97
+a_thresh = 0.05
+r12 =  results(dds,contrast = c('condition', '1', '2'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r23 =  results(dds,contrast = c('condition', '2', '3'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r68 =  results(dds,contrast = c('condition', '6', '8'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r108 =  results(dds,contrast = c('condition', '10', '8'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+
+r24 = results(dds,contrast = c('condition', '2', '4'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r25 = results(dds,contrast = c('condition', '2', '5'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r27 = results(dds,contrast = c('condition', '2', '7'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+r29 = results(dds,contrast = c('condition', '2', '9'),  alpha=a_thresh, lfcThreshold = lfc_thresh, altHypothesis = "greaterAbs", parallel = TRUE, BPPARAM = MulticoreParam(4))
+
+unadjusted_pvals = c(r12$pvalue, r23$pvalue, r24$pvalue, r25$pvalue, r27$pvalue, r29$pvalue, r68$pvalue, r108$pvalue)
+readjust_pvals = unadjusted_pvals %>% p.adjust(method = "fdr")
+
+tests = list(r12 = r12, r23 = r23, r24 = r24, r25 = r25, r27 = r27, r29 = r29, r68 = r68, r108 = r108)
+len_save = 1
+for(ii in names(tests)){
+  len = dim(tests[[ii]])[1]+len_save-1
+  tests[[ii]]$p_readjust = readjust_pvals[len_save:len]
+  len_save = len+1
+}
+```
+
+## Figure 6c
+```{r}
+meet_criteria = which(tests[["r12"]]$p_readjust > a_thresh &
+                        tests[["r23"]]$p_readjust>a_thresh &
+                        tests[["r68"]]$p_readjust<a_thresh &
+                        tests[["r108"]]$p_readjust<a_thresh &
+                        (sign(tests[["r68"]]$log2FoldChange) == sign(tests[["r68"]]$log2FoldChange)) &
+                        tests[["r24"]]$p_readjust>a_thresh &
+                        tests[["r25"]]$p_readjust>a_thresh &
+                        tests[["r27"]]$p_readjust>a_thresh & 
+                        tests[["r29"]]$p_readjust>a_thresh)
+
+plot_these = rlog_data[meet_criteria,] - rowMeans(rlog_data[meet_criteria, 1:3])
+
+rownames(plot_these) = gene_names$symbol[meet_criteria]
+dist.mat = dist(plot_these[,4:29])
+hc = hclust(dist.mat, method = "ward.D2")
+mean_exp = round(rowMeans(plot_these[hc$order,c(10:29)]),4)
+hc = dend_sort_exp(hc, mean_exp)
+
+plot_heatmap(plot_these[hc$order, c(1:15, 19:21,25,26,16:18,22:24,27:29)], thresh = 0.97, cluster_rows = FALSE, cluster_cols = FALSE, gaps_col = c(9,20), labels_col = c(rep("Vector Control", 3), rep("V600E Induced", 3), rep("20hr Drug", 3), rep("Week 1", 3), rep("Week 2 CONT",3), rep("Week 2 INT-OFF", 3), rep("Week 3 CONT", 3), rep("Week 3 INT-ON", 3), rep("Week 4 CONT", 2), rep("Week 4 INT-OFF", 3)), show_rownames = FALSE)
+dev.copy2eps(file="../results/Fig6c_Script_Output/Fig6c.eps")
+```
+
+```{r write data}
+write_this_data = gene_names[meet_criteria,] %>% bind_cols(., as.data.frame(plot_these))
+write_this_data[hc$order,] %>% write_csv("../results/Fig6c_Script_Output/Fig6c_data.csv")
+```
+
+```{r}
+sessionInfo()
+```
+

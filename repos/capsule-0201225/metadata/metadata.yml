@@ -1,0 +1,36 @@
+metadata_version: 1
+name: Fully automatic atrial fibrillation screening and atrial fibrillation detection
+description: A demo for testing deep neural network for automatically screening atrial
+  fibrillation (AF) patients using RR intervals. Companion code to the paper "Fully
+  automatic screening of patients with atrial fibrillation in long-term heartbeat
+  monitoring using deep learning".
+tags:
+- AF detection
+authors:
+- name: Peng Zhang
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Yuting Chen
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Fan Lin
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Fei MA
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Siyi Fang
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Haiyan Zheng
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Zuwen Xiang
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Xiaoyun Yang
+  affiliations:
+  - name: Huazhong University of Science and Technology
+- name: Qiang Li
+  affiliations:
+  - name: Huazhong University of Science and Technology

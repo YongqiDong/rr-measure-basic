@@ -1,0 +1,16 @@
+metadata_version: 1
+name: WABL Method as a Universal Defuzzifier in the Fuzzy Gradient Boosting Regression
+  Model
+description: Fuzzy Gradient Boosting Regression algorithm with target values as Fuzzy
+  Numbers. The algorithm uses different defuzzification methods to perform some operations
+  on fuzzy numbers.
+tags:
+- Fuzzy regression
+- Defuzzification
+- WABL
+- Gradient boosting
+authors:
+- name: Resmiye Nasiboglu, Dokuz Eylul University
+- name: Efendi Nasibov, Dokuz Eylul University
+corresponding_contributor:
+  name: Efendi Nasibov, efendi.nasibov@deu.edu.tr

@@ -1,0 +1,22 @@
+metadata_version: 1
+name: GazeR-Pupil and Gaze Processing
+description: This package contains functions for reading in raw eye-tracking data,
+  formatting it for (growth curve) analysis, converting from gaze coordinates to areas
+  of interest, binifying and aggregating data, and various helper functions for GCA
+  and plotting. In addition to gaze-position data, it can handle pupillometric data.
+authors:
+- name: Jason Geller
+  affiliations:
+  - name: University of Iowa
+- name: 'Daniel Mirman '
+  affiliations:
+  - name: University of Edinburgh
+- name: 'Tristian Mahr '
+  affiliations:
+  - name: University of Wisconsin-Madison
+- name: Matt Winn
+  affiliations:
+  - name: University of Minnesota
+corresponding_contributor:
+  name: 'Jason Geller '
+  email: drjasongeller@gmail.com

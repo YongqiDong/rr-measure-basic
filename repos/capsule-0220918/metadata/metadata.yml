@@ -1,0 +1,31 @@
+metadata_version: 1
+name: 'Linked Dynamic Graph CNN: Learning through Point Cloud by Linking Hierarchical
+  Features'
+description: We propose a linked dynamic graph CNN (LDGCNN) to classify and segment
+  point cloud directly. We remove the transformation network, link hierarchical features
+  from dynamic graphs, freeze feature extractor, and retrain the classifier to increase
+  the performance of LDGCNN.
+tags:
+- computer-vision
+- point-clouds
+- classification
+- segmentation
+authors:
+- name: Kuangen Zhang
+  affiliations:
+  - name: University of British Columbia
+- name: Ming Hao
+  affiliations:
+  - name: Tsinghua University
+- name: Jing Wang
+  affiliations:
+  - name: University of British Columbia
+- name: Clarence W. de Silva
+  affiliations:
+  - name: University of British Columbia
+- name: Chenglong Fu
+  affiliations:
+  - name: Southern University of Science and Technology
+corresponding_contributor:
+  name: Chenglong Fu
+  email: fucl@sustech.edu.cn

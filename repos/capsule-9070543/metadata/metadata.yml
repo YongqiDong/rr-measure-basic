@@ -1,0 +1,56 @@
+metadata_version: 1
+name: Intermittent Drug Treatment of BRAF<sup>V600E</sup> Melanoma Cells Delays Resistance
+  by Sensitizing Cells to Rechallenge
+description: Melanoma patients receiving drugs targeting BRAFV600E and MKK1/2 invariably
+  develop resistance and continue progression, limiting the efficacy of treatment.
+  As an alternative to continuous dosing schedules, intermittent treatment strategies
+  involving intervening periods of drug withdrawal have been proposed as a means to
+  delay resistance. The efficacy of this treatment strategy has been supported by
+  preclinical findings and clinical case reports. The beneficial effect of intermittent
+  treatment has been attributed to “drug addiction”, in which the cell viability of
+  resistant cells is compromised during periods of drug removal due to MAP kinase
+  pathway hyperactivation. However, the mechanistic basis of intermittent treatment
+  is still incompletely understood. Here, we show that intermittent treatment with
+  the BRAFV600E inhibitor, LGX818/encorafenib, suppresses growth compared to continuous
+  treatment in human melanoma cells engineered to express BRAFV600E, p61-BRAFV600E
+  or MKK2C125S oncogenes. While drug addiction is clearly observable in these cells,
+  it fails to account for the advantageous effects of intermittent treatment. Instead,
+  growth suppression can be explained mainly by resensitization during periods of
+  drug removal, followed by cell death when drug is readded. Transcriptome analysis
+  of drug resistant cells identifies a subset of genes with a distinct pattern of
+  reversibility occurring with successive cycles of drug removal and readdition. The
+  transcriptomes of cells with drug removed were distinct from those treated continuously,
+  but rechallenge with drug recovered the transcriptome of continuous treatment. We
+  conclude that the beneficial effects of intermittent treatment in our model are
+  best explained by adaptive, non-mutational changes in transcription which confer
+  drug resensitization.
+tags:
+- rna-seq
+- melanoma
+- cancer
+- targeted-therapeutics
+- resistance
+- drug-resistance
+- intermittent-dosing
+authors:
+- name: Scott A. Stuart
+  affiliations:
+  - name: University of Colorado Boulder
+- name: Andrew J. Kavran
+  affiliations:
+  - name: University of Colorado Boulder
+- name: Joel M. Basken
+  affiliations:
+  - name: University of Colorado Boulder
+- name: Patrice Lee
+  affiliations:
+  - name: Array BioPharma
+- name: Barbara Brandhuber
+  affiliations:
+  - name: Array BioPharma
+- name: Natalie G. Ahn
+  affiliations:
+  - name: University of Colorado Boulder
+corresponding_contributor:
+  name: Natalie G. Ahn
+  email: natalie.ahn@colorado.edu

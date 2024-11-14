@@ -1,0 +1,28 @@
+example_retro_r	retro_r
+data_plot_winner	c	data.frame	factor	rep	retro_r	sample_rho
+Plot_winner	$	aes	c	coord_cartesian	data_plot1	des_fit	element_blank	geom_vline	ggplot	guide_legend	guides	hypothesis	labs	list	rho	scale_linetype_manual	scale_x_continuous	seq	stat_density	theme	unit
+example_pro_r	pro_r
+Data_table_pro_r	.	%>%	~	list	map_df	map2	pro_r
+Table_pro_r	::	.	%>%	c	crit_r	data_table	duplicated	F	filter	footnote	kable	kable_styling	mutate	mutate_at	n	paste0	power	rho	round	row_spec	T	typeM	typeS	vars
+Data_plot_scenarios	%>%	$	$<-	as.data.frame	c	expand.grid	mapply	rep	retro_r	seq	t
+Plot_scenarios	[[	&	%>%	<=	==	|	$	$<-	aes	c	cbind	data_conditions	element_blank	expand.grid	factor	filter	format	geom_hline	geom_line	ggplot	ggplotGrob	gpar	grid.draw	grid.newpage	gtable_add_cols	gtable_add_grob	gtable_add_rows	if	index	lapply	load	map2	mutate_at	n	paste0	pivot_longer	power	rbind	return	rho	scale_x_continuous	scale_y_continuous	seq	textGrob	theme	typeS	unit	unit.pmax	value
+Data_table_alpha	.	%>%	~	list	map	map_df	retro_r
+Table_alpha	::	.	%>%	c	crit_r	data_table2	duplicated	F	filter	footnote	kable	kable_styling	mutate	mutate_at	paste0	power	round	row_spec	sig_level	T	typeM	typeS	vars
+Data_plot_hypothesis	%>%	==	$	$<-	as.data.frame	c	data_conditions	data.frame	filter	mapply	mutate_at	rbind	rep	retro_r	rho	seq	t	unlist	vars
+Plot_hypothesis	%>%	<=	aes	alternative	arrangeGrob	c	element_blank	factor	filter	geom_hline	geom_line	get_legend	ggplot	grid.draw	grid.newpage	labs	load	mutate	n	power	scale_linetype_manual	scale_y_continuous	seq	theme	typeM
+example_pro_r2	pro_r
+Data_plot_sampling_rho	c	data.frame	factor	list	map	rep	sample_rho	unlist
+Plot_sampling_rho	aes	c	data_sampling_rho	element_blank	ggplot	guide_legend	guides	labs	list	rho	scale_linetype_manual	scale_x_continuous	seq	stat_density	theme	unit	value
+Data_plot_cohen	%>%	$	as.data.frame	c	expand.grid	mapply	mutate_at	retrodesignD	seq	t	unlist	vars
+Plot_cohen	%>%	aes	arrangeGrob	c	d	element_blank	factor	geom_hline	geom_line	get_legend	ggplot	grid.draw	grid.newpage	guide_legend	guides	labs	list	load	mutate	power	scale_linetype_manual	scale_x_continuous	scale_y_continuous	seq	theme	typeM	typeS	unit
+Data_plot_rho	%>%	$	$<-	as.data.frame	c	expand.grid	mapply	mutate_at	rep	retro_r	seq	t	unlist	vars
+Plot_rho	%>%	aes	arrangeGrob	c	element_blank	factor	geom_hline	geom_line	get_legend	ggplot	grid.draw	grid.newpage	guide_legend	guides	labs	list	load	mutate	power	rho	scale_linetype_manual	scale_x_continuous	scale_y_continuous	seq	theme	typeM	typeS	unit
+intruction1	source
+function_retro	c	n	retro_r	rho
+function_pro	c	pro_r	rho
+ex_figure1	retro_r
+ex_figure3	pro_r
+ex_figure6	pro_r
+ex_table1	pro_r
+ex_table2	retro_r
+Session Info	sessionInfo

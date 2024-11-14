@@ -1,0 +1,37 @@
+metadata_version: 1
+name: Super-Iterative Image Reconstruction for Tomography
+description: In this capsule an implementation of the Super-Iterative algorithm based
+  on simplified PET projection data is shown. The method presents a novel strategy
+  to go beyond the expected resolution-noise limits for a given low-resolution (LR)
+  sinogram based on a high-resolution (HR) one. From the projections of the LR reconstructed
+  image, we redistribute the counts of each line-of-response (LOR) into three subLORs
+  to obtain an estimation of the HR sinogram. The whole process of estimation and
+  reconstruction of the HR sinogram is called a super-iteration.
+tags:
+- positron-emission-tomography
+- super-resolution
+- iterative-reconstruction
+authors:
+- name: Pablo Galve
+  affiliations:
+  - name: Universidad Complutense de Madrid, Nuclear Physics Group and IPARCOS, Department
+      of Quantum, Thermal and Electronic Physics, Faculty of Physical Science
+- name: Joaquin L. Herraiz
+  affiliations:
+  - name: Universidad Complutense de Madrid, Nuclear Physics Group and IPARCOS, Department
+      of Quantum, Thermal and Electronic Physics, Faculty of Physical Science
+- name: Jose Manuel Udias
+  affiliations:
+  - name: Universidad Complutense de Madrid, Nuclear Physics Group and IPARCOS, Department
+      of Quantum, Thermal and Electronic Physics, Faculty of Physical Science
+- name: Fernando Arias
+  affiliations:
+  - name: Universidad Complutense de Madrid, Nuclear Physics Group and IPARCOS, Department
+      of Quantum, Thermal and Electronic Physics, Faculty of Physical Science
+- name: Alejandro  Lopez-Montes
+  affiliations:
+  - name: Universidad Complutense de Madrid, Nuclear Physics Group and IPARCOS, Department
+      of Quantum, Thermal and Electronic Physics, Faculty of Physical Science
+corresponding_contributor:
+  name: Pablo Galve
+  email: pgalve@ucm.es

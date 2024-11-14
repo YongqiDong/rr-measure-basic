@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1615475078578.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "BDC44700",
+    "lastKnownWriteTime" : 1615475055,
+    "last_content_update" : 1615475055,
+    "path" : "~/capsule/environment/postInstall",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "2,47",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "text"
+}

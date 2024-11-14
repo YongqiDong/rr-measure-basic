@@ -1,0 +1,25 @@
+metadata_version: 1
+name: Code for paper Graph Neural Networks for Individual Treatment Effect Estimation
+description: |-
+  This code is used to produce the results in the paper by Sirazitdinov et al. "Graph  Neural Networks for Individual Treatment Effect Estimation"
+  Individual Treatment Effect estimation (ITE) is essential for personalized decision-making in the clinical setting. We assume that observational data exists regarding the treatment and the individual outcome. In addition, we claim that there is knowledge of a causal graph either from the data generation process or causal dependencies of patient variables.   In that case, using the graph can support the task of potential outcome prediction. We model this graph via Graph Neural Networks (GNNs). To the authors' knowledge, this is the first time that GNNs are used in ITE estimation. The hypothesis is that prior medical information allows the GNN to improve the predicted outcomes. We propose a method for incorporating graph information into the prediction process and discuss under which conditions this prior information can improve the prediction. The results show that the proposed method performs comparably to the state-of-the-art techniques on semi-artificial datasets. On artificially generated datasets that include graph information, the proposed approach outperforms the other methods in case that the number of training samples is small, and that there are masked or hidden nodes.
+tags:
+- causal inference
+- Graph Neural Networks
+- individual treatment effect
+authors:
+- name: Andrei Sirazitdinov
+  affiliations:
+  - name: MIISM
+- name: Marcus Buchwald
+  affiliations:
+  - name: MIISM/IWR
+- name: Jürgen Hesser
+  affiliations:
+  - name: IWR/ZITI/MIISM/CZS
+- name: Vincent Heuveline
+  affiliations:
+  - name: IWR
+corresponding_contributor:
+  name: Andrei Sirazitdinov
+  email: Andrei.Sirazitdinov@medma.uni-heidelberg.de

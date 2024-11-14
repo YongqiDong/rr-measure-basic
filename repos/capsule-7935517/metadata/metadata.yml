@@ -1,0 +1,13 @@
+metadata_version: 1
+name: 'Designing Studies and Evaluating Research Results: Type M and Type S Errors for Pearson Correlation Coefficient'
+description: 'It is widely appreciated that many studies in psychological science suffer from low statistical power. One of the consequences of analyzing underpowered studies with thresholds of statistical significance, is a high risk of finding exaggerated effect size estimates, in the right or in the wrong direction. These inferential risks can be directly quantified in terms of Type M (magnitude) error and Type S (sign) error, which directly communicate the consequences of design choices on effect size estimation. Given a study design, Type M error is the factor by which a statistically significant effect is on average exaggerated. Type S error is the probability to find a statistically significant result in the opposite direction to the plausible one. Ideally, these errors should be considered during a prospective design analysis in the design phase of a study to determine the appropriate sample size. However, they can also be considered when evaluating studies’ results in a retrospective design analysis. In the present contribution we aim to facilitate the considerations of these errors in the research practice in psychology. For this reason we illustrate how to consider Type M and Type S errors in a design analysis using one of the most common effect size measures in psychology: Pearson correlation coefficient. We provide various examples and make the R functions freely available to enable researchers to perform design analysis for their research projects.'
+authors:
+- name: Giulia Bertoldo
+  affiliations:
+  - name: University of Padova
+- name: Claudio Zandonella Callegher
+  affiliations:
+  - name: University of Padova
+- name: Gianmarco Altoè
+  affiliations:
+  - name: University of Padova
