@@ -1,2 +1,5 @@
 elsevier_api:
   api_key: your_api_key_here
+xplore_api: 
+  api_key: your_api_key_here
+  auth_token: your_auth_token_here
