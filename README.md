@@ -42,7 +42,23 @@ elsevier_api:
 ### Timeline
 
 - 2024-10-01: Project started
-- 2024-11-01: Dataset v0.1 created (expected)
+- 2024-11-01: Dataset v0.1 created
+- 2024-11-15: Dataset v1.0 created (10k+ papers from 2019-2024 created)
+
+### Data sharing
+
+The data-sharing license is still pending, but our goal is to release the data alongside the associated preprint for this project.
+
+### Automatic tools for Transportation Research
+
+#### Create a database for paper metadata
+
+[API for searching paper information](https://dev.elsevier.com/documentation/ScienceDirectSearchAPI.wadl)
+
+#### Create a tool to retrieve paper information
+
+[API for retrieving paper information](https://dev.elsevier.com/documentation/ArticleRetrievalAPI.wadl)
+
 
 ### Literature
 
